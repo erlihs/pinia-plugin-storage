@@ -1,9 +1,8 @@
 import 'pinia'
-import type { UnwrapRef } from 'vue'
 import type { IndexedDBOptions, CookieOptions } from './adapters'
 import type { Store } from 'pinia'
 
-type Adapters = 'cookies' | 'localStorage' | 'sessionStorage' | 'indexedDB'
+export type Adapters = 'cookies' | 'localStorage' | 'sessionStorage' | 'indexedDB'
 
 // Enforce mutual exclusivity between include and exclude
 type IncludeOnly = { include: string[] | string; exclude?: never }
@@ -12,21 +11,23 @@ type Neither = { include?: undefined; exclude?: undefined }
 type ExclusiveIncludeExclude = IncludeOnly | ExcludeOnly | Neither
 
 type BaseBucket = ExclusiveIncludeExclude & {
-  beforeHydrate?: (oldState: UnwrapRef<Store>) => void
+  // Allows transforming the persisted slice before it's merged into the store.
+  // Return value (if object) replaces the slice; otherwise in-place mutation is honored.
+  beforeHydrate?: (slice: unknown, store: Store) => unknown | void
   debounceDelayMs?: number
 }
 
 export type Bucket =
   | (BaseBucket & {
-      adapter?: 'cookies'
+      adapter: 'cookies'
       options?: CookieOptions
     })
   | (BaseBucket & {
-      adapter?: 'indexedDB'
+      adapter: 'indexedDB'
       options?: IndexedDBOptions
     })
   | (BaseBucket & {
-      adapter?: 'localStorage' | 'sessionStorage'
+      adapter: 'localStorage' | 'sessionStorage'
       options?: never
     })
 
@@ -35,6 +36,7 @@ export type StorageOptions =
   | Bucket
   | {
       buckets?: Bucket[]
+      defaultAdapter?: Adapters
       debounceDelayMs?: number
       onError?: (error: unknown, ctx: { stage: 'hydrate' | 'persist'; storeId: string; adapter: string }) => void
     }

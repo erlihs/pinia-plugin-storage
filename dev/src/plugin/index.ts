@@ -1,6 +1,6 @@
 import type { PiniaPluginContext } from 'pinia'
 import './types'
-import type { Bucket, StorageOptions } from './types'
+import type { Bucket, StorageOptions, Adapters } from './types'
 import type { StorageAdapter } from './adapters'
 import { adapters } from './adapters'
 
@@ -48,23 +48,29 @@ const resolveState = (
 }
 
 const resolveBuckets = (options: StorageOptions | undefined): Bucket[] => {
-  const defaultBucket: Bucket[] = [{ adapter: 'sessionStorage' }]
+  const configuredDefault: Adapters | undefined =
+    typeof options === 'object' && options && 'defaultAdapter' in options ? options.defaultAdapter : undefined
+  const fallback: Adapters = configuredDefault || 'sessionStorage'
 
-  if (!options) return defaultBucket
+  if (!options) return [{ adapter: fallback } as Bucket]
+
   if (typeof options === 'string') {
-    if (options === 'cookies') return [{ adapter: 'cookies' }]
-    if (options === 'indexedDB') return [{ adapter: 'indexedDB', options: { dbName: 'pinia', storeName: 'keyval' } }]
-    if (options === 'localStorage') return [{ adapter: 'localStorage' }]
-    if (options === 'sessionStorage') return [{ adapter: 'sessionStorage' }]
+    if (options === 'indexedDB')
+      return [{ adapter: 'indexedDB', options: { dbName: 'pinia', storeName: 'keyval' } }]
+    return [{ adapter: options } as Bucket]
   }
 
-  if (typeof options === 'object') {
-    if ('buckets' in options && Array.isArray(options.buckets)) {
-      return options.buckets
-    } else return [options as Bucket]
+  if ('buckets' in options && Array.isArray(options.buckets)) {
+    if (!options.buckets.length) return [{ adapter: fallback } as Bucket]
+    return options.buckets.map((b) => {
+      if (b.adapter) return b
+      // If adapter missing, assign fallback assuming it is local/session/cookies/indexedDB; treat absence of options generically.
+      return { adapter: fallback } as Bucket
+    }) as Bucket[]
   }
 
-  return defaultBucket
+  // Single bucket object form (already a Bucket due to union); just return as array
+  return [options as Bucket]
 }
 
 const resolveStorage = (bucket: Bucket): StorageAdapter => {
@@ -114,7 +120,7 @@ export const createPiniaPluginStorage = async ({
   // SSR guard: skip all persistence logic when window is not available
   if (typeof window === 'undefined') return
   if (options.storage) {
-    const buckets = resolveBuckets(options.storage)
+  const buckets = resolveBuckets(options.storage)
     const bucketPlans: BucketPlan[] = buckets.map((b) => ({ bucket: b, adapter: resolveStorage(b) }))
   const mergedState: PartialState = {}
     const onError = resolveOnError(options.storage)
@@ -128,20 +134,28 @@ export const createPiniaPluginStorage = async ({
               onError(e, {
                 stage: 'hydrate',
                 storeId: store.$id,
-                adapter: plan.bucket.adapter || 'sessionStorage',
+                adapter: plan.bucket.adapter,
               })
           : undefined,
       )
-      if (parsed && typeof parsed === 'object') Object.assign(mergedState, parsed)
+      if (parsed && typeof parsed === 'object') {
+        let slice: PartialState = parsed
+        if (typeof plan.bucket.beforeHydrate === 'function') {
+          try {
+            const maybe = plan.bucket.beforeHydrate(slice, store)
+            if (maybe && typeof maybe === 'object') slice = maybe as PartialState
+          } catch (e) {
+            onError?.(e, {
+              stage: 'hydrate',
+              storeId: store.$id,
+              adapter: plan.bucket.adapter,
+            })
+          }
+        }
+        Object.assign(mergedState, slice)
+      }
     }
     if (Object.keys(mergedState).length) {
-      if (
-        typeof options.storage === 'object' &&
-        'beforeHydrate' in options.storage &&
-        typeof options.storage.beforeHydrate === 'function'
-      ) {
-        options.storage.beforeHydrate(store)
-      }
       store.$patch(mergedState)
     }
 
@@ -158,7 +172,7 @@ export const createPiniaPluginStorage = async ({
         onError?.(e, {
           stage: 'persist',
           storeId: store.$id,
-          adapter: plan.bucket.adapter || 'sessionStorage',
+          adapter: plan.bucket.adapter,
         })
       }
     }
@@ -211,7 +225,7 @@ export const createPiniaPluginStorage = async ({
               onError?.(e, {
                 stage: 'hydrate',
                 storeId: store.$id,
-                adapter: plan.bucket.adapter || 'sessionStorage',
+                adapter: plan.bucket.adapter,
               }),
             )
             if (parsed && typeof parsed === 'object') {
@@ -222,7 +236,7 @@ export const createPiniaPluginStorage = async ({
             onError?.(e, {
               stage: 'hydrate',
               storeId: store.$id,
-              adapter: plan.bucket.adapter || 'sessionStorage',
+              adapter: plan.bucket.adapter,
             })
           }
         })

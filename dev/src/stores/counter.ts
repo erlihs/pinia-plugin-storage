@@ -46,11 +46,11 @@ export const useCounterStoreDefault = defineStore(
         {
           adapter: 'localStorage',
           include: ['count', 'extCount'],
+          beforeHydrate: (slice, store) => {
+            console.log('Before Hydrate slice for store', store.$id, slice)
+          },
         },
       ],
-      beforeHydrate: (oldState) => {
-        console.log('Before Hydrate', oldState.$state)
-      },
     },
   },
 )
