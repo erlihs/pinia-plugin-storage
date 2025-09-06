@@ -65,7 +65,7 @@ This document captures the current assessment of `src/plugin` (Pinia persistence
 - [ ] Add optional `version` + `migrate(storedVersion, data)` function.
 
 ### Phase 3 (Performance & Flexibility)
-- [ ] Per-bucket `debounceDelayMs`; support `immediate: boolean` for flush mode.
+- [x] Per-bucket `debounceDelayMs`; support `immediate: boolean` for flush mode.
 - [ ] Optional diff-based persistence (track previous serialized slice; skip if unchanged).
 - [ ] Batch multiple rapid mutations in same microtask with queue + coalesced write.
 - [ ] Allow custom `serialize` / `deserialize` (actually implement currently declared API or remove).

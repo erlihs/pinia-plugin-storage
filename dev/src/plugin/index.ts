@@ -163,10 +163,32 @@ export const createPiniaPluginStorage = async ({
       }
     }
 
-    const debouncedUpdateStorage =
-      debounceDelayMs > 0
-        ? debounce(persistPlan, debounceDelayMs)
-        : persistPlan
+    // Build per-bucket debounced functions
+    const bucketExecutors = new Map<BucketPlan, (p: BucketPlan) => void>()
+    for (const plan of bucketPlans) {
+      const delay = plan.bucket.debounceDelayMs ?? debounceDelayMs
+      const immediate = !delay || delay <= 0
+      if (immediate) {
+        // no debounce: call persist directly
+        bucketExecutors.set(plan, () => { void persistPlan(plan) })
+      } else {
+        const debounced = debounce((p: BucketPlan) => { void persistPlan(p) }, delay)
+        if (immediate) {
+          bucketExecutors.set(plan, (() => {
+            let first = true
+            return (p: BucketPlan) => {
+              if (first) {
+                first = false
+                void persistPlan(p)
+              }
+              debounced(p)
+            }
+          })())
+        } else {
+          bucketExecutors.set(plan, debounced)
+        }
+      }
+    }
 
     let skipNextPersist = false
 
@@ -175,12 +197,12 @@ export const createPiniaPluginStorage = async ({
         skipNextPersist = false
         return
       }
-      bucketPlans.forEach(debouncedUpdateStorage)
+  bucketPlans.forEach((plan) => bucketExecutors.get(plan)?.(plan))
     })
 
   // External subscription (cross-tab / channel updates)
     for (const plan of bucketPlans) {
-      if (typeof plan.adapter.subscribe === 'function') {
+  if (typeof plan.adapter.subscribe === 'function') {
         plan.adapter.subscribe(store.$id, async () => {
           try {
             const latest = await plan.adapter.getItem(store.$id)

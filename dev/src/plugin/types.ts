@@ -14,6 +14,7 @@ type ExclusiveIncludeExclude = IncludeOnly | ExcludeOnly | Neither
 
 type BaseBucket = ExclusiveIncludeExclude & {
   beforeHydrate?: (oldState: UnwrapRef<Store>) => void
+  debounceDelayMs?: number
 }
 
 export type Bucket =
