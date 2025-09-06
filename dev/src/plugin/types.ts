@@ -1,25 +1,31 @@
 import 'pinia'
+import type { UnwrapRef } from 'vue'
 
 import type { IndexedDBOptions, CookieOptions } from './adapters'
+import type { Store } from 'pinia'
 
 type Adapters = 'cookies' | 'localStorage' | 'sessionStorage' | 'indexedDB'
 
 type BaseBucket = {
   include?: string[] | string
   exclude?: string[] | string
+  beforeHydrate?: (oldState: UnwrapRef<Store>) => void
 }
 
 export type Bucket =
   | (BaseBucket & {
       adapter?: 'cookies'
       options?: CookieOptions
+      //  beforeHydrate?: (oldState: UnwrapRef<Store>) => void
     })
   | (BaseBucket & {
       adapter?: 'indexedDB'
       options?: IndexedDBOptions
+      //  beforeHydrate?: (oldState: UnwrapRef<Store>) => void
     })
   | (BaseBucket & {
       adapter?: 'localStorage' | 'sessionStorage'
+      // beforeHydrate?: (oldState: UnwrapRef<Store>) => void
     })
 
 export type StorageOptions =

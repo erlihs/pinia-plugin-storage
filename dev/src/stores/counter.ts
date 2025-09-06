@@ -47,6 +47,9 @@ export const useCounterStoreDefault = defineStore(
           include: ['count', 'extCount'],
         },
       ],
+      beforeHydrate: (oldState) => {
+        console.log('Before Hydrate', oldState.$state)
+      },
     },
   },
 )

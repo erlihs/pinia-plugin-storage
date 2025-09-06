@@ -89,6 +89,14 @@ export const createPiniaPluginStorage = async ({
 
     store.$subscribe(() => {
       buckets.forEach(async (bucket) => {
+        if (
+          typeof options.storage === 'object' &&
+          'beforeHydrate' in options.storage &&
+          typeof options.storage.beforeHydrate === 'function'
+        ) {
+          options.storage.beforeHydrate(store)
+        }
+
         await updateStorage(bucket, store)
       })
     })
