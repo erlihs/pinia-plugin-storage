@@ -16,16 +16,14 @@ export type Bucket =
   | (BaseBucket & {
       adapter?: 'cookies'
       options?: CookieOptions
-      //  beforeHydrate?: (oldState: UnwrapRef<Store>) => void
     })
   | (BaseBucket & {
       adapter?: 'indexedDB'
       options?: IndexedDBOptions
-      //  beforeHydrate?: (oldState: UnwrapRef<Store>) => void
     })
   | (BaseBucket & {
       adapter?: 'localStorage' | 'sessionStorage'
-      // beforeHydrate?: (oldState: UnwrapRef<Store>) => void
+      options?: never
     })
 
 export type StorageOptions =
@@ -33,6 +31,7 @@ export type StorageOptions =
   | Bucket
   | {
       buckets?: Bucket[]
+      debounceDelayMs?: number
     }
 
 declare module 'pinia' {

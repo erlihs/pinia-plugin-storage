@@ -9,6 +9,14 @@ export type { Bucket, StorageOptions }
 type Store = PiniaPluginContext['store']
 type PartialState = Partial<Store['$state']>
 
+const debounce = <T extends unknown[]>(fn: (...args: T) => void | Promise<void>, delay: number) => {
+  let timeoutId: ReturnType<typeof setTimeout>
+  return (...args: T) => {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => fn(...args), delay)
+  }
+}
+
 const resolveState = (
   state: Store['$state'],
   include?: string[] | string,
@@ -87,18 +95,30 @@ export const createPiniaPluginStorage = async ({
       }
     }
 
-    store.$subscribe(() => {
-      buckets.forEach(async (bucket) => {
-        if (
-          typeof options.storage === 'object' &&
-          'beforeHydrate' in options.storage &&
-          typeof options.storage.beforeHydrate === 'function'
-        ) {
-          options.storage.beforeHydrate(store)
-        }
+    const debounceDelayMs =
+      typeof options.storage === 'object' && 'debounceDelayMs' in options.storage
+        ? options.storage.debounceDelayMs || 0
+        : 0
 
-        await updateStorage(bucket, store)
-      })
+    const updateStorageForBucket = async (bucket: Bucket) => {
+      if (
+        typeof options.storage === 'object' &&
+        'beforeHydrate' in options.storage &&
+        typeof options.storage.beforeHydrate === 'function'
+      ) {
+        options.storage.beforeHydrate(store)
+      }
+
+      await updateStorage(bucket, store)
+    }
+
+    const debouncedUpdateStorage =
+      debounceDelayMs > 0
+        ? debounce(updateStorageForBucket, debounceDelayMs)
+        : updateStorageForBucket
+
+    store.$subscribe(() => {
+      buckets.forEach(debouncedUpdateStorage)
     })
   }
 }

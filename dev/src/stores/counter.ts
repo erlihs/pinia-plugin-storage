@@ -41,6 +41,7 @@ export const useCounterStoreDefault = defineStore(
   },
   {
     storage: {
+      debounceDelayMs: 500,
       buckets: [
         {
           adapter: 'localStorage',
