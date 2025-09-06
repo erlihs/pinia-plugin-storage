@@ -1,18 +1,30 @@
 import 'pinia'
 
-import cookiesStorage from './adapters/cookies'
+//import cookiesStorage from './adapters/cookies'
 import type { CookieOptions } from './adapters/cookies'
 
-export interface StorageBucket {
-  key?: string
-  storage?: Storage | typeof cookiesStorage
-  paths?: string[]
-  cookieOptions?: CookieOptions // Add cookie options support
+type Adapters = 'cookies' | 'localStorage' | 'sessionStorage'
+
+type BaseBucket = {
+  include?: string[] | string
+  exclude?: string[] | string
 }
 
-export interface StorageOptions {
-  buckets?: StorageBucket[]
-}
+export type Bucket =
+  | (BaseBucket & {
+      adapter?: 'cookies'
+      options?: CookieOptions
+    })
+  | (BaseBucket & {
+      adapter?: 'localStorage' | 'sessionStorage'
+    })
+
+export type StorageOptions =
+  | Adapters
+  | Bucket
+  | {
+      buckets?: Bucket[]
+    }
 
 declare module 'pinia' {
   export interface DefineStoreOptionsBase<S, Store> {
@@ -33,4 +45,4 @@ declare module 'pinia' {
   }
 }
 
-export { cookiesStorage }
+//export { cookiesStorage }

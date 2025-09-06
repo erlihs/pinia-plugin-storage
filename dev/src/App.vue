@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import { useCounterStore, useCounterStoreDefault, useCounterStoreAdvanced } from './stores/counter'
+import {
+  useCounterStore,
+  useCounterStoreDefault,
+  useCounterStoreAdvanced,
+  useCounterStoreSession,
+} from './stores/counter'
 const counterStore = useCounterStore()
 const counterStoreDefault = useCounterStoreDefault()
 const counterStoreAdvanced = useCounterStoreAdvanced()
+const counterStoreSession = useCounterStoreSession()
 </script>
 
 <template>
@@ -41,6 +47,13 @@ const counterStoreAdvanced = useCounterStoreAdvanced()
         <td><button @click="counterStoreAdvanced.increment()">+</button></td>
         <td>{{ counterStoreAdvanced.count }}</td>
         <td>{{ counterStoreAdvanced.extCount }}</td>
+        <td>Values should persist after page reload</td>
+      </tr>
+      <tr>
+        <td>sessionStorage</td>
+        <td><button @click="counterStoreSession.increment()">+</button></td>
+        <td>{{ counterStoreSession.count }}</td>
+        <td>{{ counterStoreSession.extCount }}</td>
         <td>Values should persist after page reload</td>
       </tr>
     </tbody>

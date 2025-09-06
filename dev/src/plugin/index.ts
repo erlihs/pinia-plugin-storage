@@ -1,68 +1,88 @@
 import type { PiniaPluginContext } from 'pinia'
 import './types'
-import type { StorageBucket, StorageOptions } from './types'
-import { createCookiesStorage } from './adapters/cookies'
+import type { Bucket, StorageOptions } from './types'
+import cookiesStorage, { createCookiesStorage } from './adapters/cookies'
+import type { CookieOptions } from './adapters/cookies'
 
-export type { StorageBucket, StorageOptions }
+export type { Bucket, StorageOptions }
 export { createCookiesStorage } from './adapters/cookies'
 export type { CookieOptions } from './adapters/cookies'
 
 type Store = PiniaPluginContext['store']
 type PartialState = Partial<Store['$state']>
 
-export const updateStorage = (strategy: StorageBucket, store: Store) => {
-  // Handle cookie storage with options
-  let storage = strategy.storage || sessionStorage
-  
-  // If using cookies and cookieOptions are provided, create a configured storage
-  if (strategy.cookieOptions && 
-      (storage === window.sessionStorage || storage === window.localStorage || 
-       typeof storage === 'object' && 'setItem' in storage)) {
-    // Only apply cookie options if we're likely dealing with cookies
-    // You might want to add a more specific check here
-    storage = createCookiesStorage(strategy.cookieOptions)
+const resolveState = (
+  state: Store['$state'],
+  include?: string[] | string,
+  exclude?: string[] | string,
+) => {
+  if (include && exclude) {
+    throw new Error('Cannot use both include and exclude in the same bucket')
   }
-  
-  const storeKey = strategy.key || store.$id
 
-  if (strategy.paths) {
-    const partialState = strategy.paths.reduce((finalObj, key) => {
-      finalObj[key] = store.$state[key]
+  if (include) {
+    const paths = Array.isArray(include) ? include : [include]
+    return paths.reduce((finalObj, key) => {
+      if (key in state) {
+        finalObj[key] = state[key]
+      }
       return finalObj
     }, {} as PartialState)
-
-    storage.setItem(storeKey, JSON.stringify(partialState))
+  } else if (exclude) {
+    const paths = Array.isArray(exclude) ? exclude : [exclude]
+    return Object.keys(state).reduce((finalObj, key) => {
+      if (!paths.includes(key)) {
+        finalObj[key] = state[key]
+      }
+      return finalObj
+    }, {} as PartialState)
   } else {
-    storage.setItem(storeKey, JSON.stringify(store.$state))
+    return state
   }
+}
+
+const resolveBuckets = (options: StorageOptions | undefined): Bucket[] => {
+  const defaultBucket: Bucket[] = [{ adapter: 'sessionStorage' }]
+
+  if (!options) return defaultBucket
+  if (typeof options === 'string') return [{ adapter: options }]
+
+  if (typeof options === 'object') {
+    if ('buckets' in options && Array.isArray(options.buckets)) {
+      return options.buckets
+    } else return [options as Bucket]
+  }
+
+  return defaultBucket
+}
+
+const resolveStorage = (bucket: Bucket): Storage => {
+  const storageMap: Record<string, Storage> = {
+    cookies: cookiesStorage,
+    localStorage: localStorage,
+    sessionStorage: sessionStorage,
+  }
+  let storage = storageMap[bucket.adapter || 'sessionStorage']
+  if (storage === cookiesStorage) {
+    storage = createCookiesStorage((bucket as Bucket & { options: CookieOptions }).options)
+  }
+  return storage
+}
+
+export const updateStorage = (bucket: Bucket, store: Store) => {
+  const storage = resolveStorage(bucket)
+  const partialState = resolveState(store.$state, bucket.include, bucket.exclude)
+  storage.setItem(store.$id, JSON.stringify(partialState))
 }
 
 export const createPiniaPluginStorage = ({ options, store }: PiniaPluginContext): void => {
   if (options.storage) {
-    const defaultStrat: StorageBucket[] = [
-      {
-        key: store.$id,
-        storage: sessionStorage,
-      },
-    ]
-
-    const buckets = options.storage?.buckets?.length
-      ? options.storage?.buckets
-      : defaultStrat
+    const buckets = resolveBuckets(options.storage)
 
     buckets.forEach((bucket) => {
-      // Handle cookie storage with options
-      let storage = bucket.storage || sessionStorage
+      const storage = resolveStorage(bucket)
 
-      // If using cookies and cookieOptions are provided, create a configured storage
-      if (bucket.cookieOptions &&
-          (storage === window.sessionStorage || storage === window.localStorage || 
-           typeof storage === 'object' && 'setItem' in storage)) {
-        storage = createCookiesStorage(bucket.cookieOptions)
-      }
-
-      const storeKey = bucket.key || store.$id
-      const storageResult = storage.getItem(storeKey)
+      const storageResult = storage.getItem(store.$id)
 
       if (storageResult) {
         store.$patch(JSON.parse(storageResult))
