@@ -59,7 +59,7 @@ This document captures the current assessment of `src/plugin` (Pinia persistence
 - [ ] SSR guard (`if (typeof window === 'undefined') return;`).
 
 ### Phase 2 (Synchronization & Lifecycle)
-- [ ] Implement external subscription: use each adapter's `subscribe` to rehydrate changed keys (diff + patch) without write loops (use change origin token).
+- [x] Implement external subscription: use each adapter's `subscribe` to rehydrate changed keys (basic patch with loop suppression implemented).
 - [ ] Add `$reset` interception (via `$onAction`) to clear persisted entry or restore defaults then persist.
 - [ ] Support namespaced keys: `${prefix}:${version}:${store.$id}:${bucketName || adapter}`.
 - [ ] Add optional `version` + `migrate(storedVersion, data)` function.
@@ -182,6 +182,6 @@ interface GlobalStorageOptions {
 
 ---
 ## 11. Quick Win Candidates
-- Use adapter.subscribe
+(All quick wins implemented.)
 
 Implement those first to mitigate most correctness and performance risks.

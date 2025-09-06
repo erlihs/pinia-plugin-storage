@@ -161,8 +161,43 @@ export const createPiniaPluginStorage = async ({
         ? debounce(persistPlan, debounceDelayMs)
         : persistPlan
 
+    let skipNextPersist = false
+
     store.$subscribe(() => {
+      if (skipNextPersist) {
+        skipNextPersist = false
+        return
+      }
       bucketPlans.forEach(debouncedUpdateStorage)
     })
+
+  // External subscription (cross-tab / channel updates)
+    for (const plan of bucketPlans) {
+      if (typeof plan.adapter.subscribe === 'function') {
+        plan.adapter.subscribe(store.$id, async () => {
+          try {
+            const latest = await plan.adapter.getItem(store.$id)
+            if (!latest) return
+            const parsed = safeParse<PartialState>(latest, (e) =>
+              onError?.(e, {
+                stage: 'hydrate',
+                storeId: store.$id,
+                adapter: plan.bucket.adapter || 'sessionStorage',
+              }),
+            )
+            if (parsed && typeof parsed === 'object') {
+              skipNextPersist = true
+              store.$patch(parsed)
+            }
+          } catch (e) {
+            onError?.(e, {
+              stage: 'hydrate',
+              storeId: store.$id,
+              adapter: plan.bucket.adapter || 'sessionStorage',
+            })
+          }
+        })
+      }
+    }
   }
 }
