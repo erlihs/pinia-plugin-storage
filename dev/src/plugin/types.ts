@@ -38,7 +38,13 @@ export type StorageOptions =
       buckets?: Bucket[]
       defaultAdapter?: Adapters
       debounceDelayMs?: number
-      onError?: (error: unknown, ctx: { stage: 'hydrate' | 'persist'; storeId: string; adapter: string }) => void
+      onError?: (error: unknown, ctx: { 
+        stage: 'hydrate' | 'persist' | 'sync'; 
+        storeId: string; 
+        adapter: string;
+        operation: 'read' | 'write' | 'parse' | 'transform' | 'channel';
+        key?: string;
+      }) => void
     }
 
 /* eslint-disable @typescript-eslint/no-unused-vars */

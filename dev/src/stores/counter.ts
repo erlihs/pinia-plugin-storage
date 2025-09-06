@@ -51,6 +51,12 @@ export const useCounterStoreDefault = defineStore(
           },
         },
       ],
+      // Example of comprehensive error handling
+      onError: (error, ctx) => {
+        console.warn(`Storage error in ${ctx.stage}/${ctx.operation} for ${ctx.storeId} (${ctx.adapter}):`, error)
+        // In production, you might want to send this to your error tracking service
+        // errorTracker.captureException(error, { extra: ctx })
+      },
     },
   },
 )

@@ -93,7 +93,13 @@ const safeParse = <T = unknown>(raw: string, onError?: (err: unknown) => void): 
   }
 }
 
-type OnErrorFn = (error: unknown, ctx: { stage: 'hydrate' | 'persist'; storeId: string; adapter: string }) => void
+type OnErrorFn = (error: unknown, ctx: { 
+  stage: 'hydrate' | 'persist' | 'sync'; 
+  storeId: string; 
+  adapter: string;
+  operation: 'read' | 'write' | 'parse' | 'transform' | 'channel';
+  key?: string;
+}) => void
 
 interface MaybeOnError {
   onError?: OnErrorFn
@@ -107,10 +113,24 @@ const resolveOnError = (storageOption: StorageOptions | undefined): OnErrorFn | 
   return undefined
 }
 
-export const updateStorage = async (bucket: Bucket, store: Store) => {
+// Simple error context builder
+const createErrorContext = (
+  stage: 'hydrate' | 'persist' | 'sync',
+  operation: 'read' | 'write' | 'parse' | 'transform' | 'channel',
+  storeId: string,
+  adapter: string,
+  key?: string
+) => ({ stage, operation, storeId, adapter, key })
+
+export const updateStorage = async (bucket: Bucket, store: Store, onError?: OnErrorFn) => {
   const storage = resolveStorage(bucket)
   const partialState = resolveState(store.$state, bucket.include, bucket.exclude)
-  await storage.setItem(store.$id, JSON.stringify(partialState))
+  
+  try {
+    await storage.setItem(store.$id, JSON.stringify(partialState))
+  } catch (error) {
+    onError?.(error, createErrorContext('persist', 'write', store.$id, bucket.adapter, store.$id))
+  }
 }
 
 export const createPiniaPluginStorage = ({
@@ -125,55 +145,75 @@ export const createPiniaPluginStorage = ({
   const bucketPlans: BucketPlan[] = buckets.map((b) => ({ bucket: b, adapter: resolveStorage(b) }))
   const onError = resolveOnError(options.storage)
 
+  let skipNextPersist = false
+  let isHydrating = false
+
   // Handle async hydration without blocking plugin registration
   const performHydration = async () => {
+    isHydrating = true
     const mergedState: PartialState = {}
     
-    for (const plan of bucketPlans) {
+    // Collect all storage operations in parallel to avoid sequential race conditions
+    const storageOperations = bucketPlans.map(async (plan) => {
       try {
         const storageResult = await plan.adapter.getItem(store.$id)
-        if (!storageResult) continue
+        if (!storageResult) return null
         
         const parsed = safeParse<PartialState>(
           storageResult,
           onError
             ? (e) =>
-                onError(e, {
-                  stage: 'hydrate',
-                  storeId: store.$id,
-                  adapter: plan.bucket.adapter,
-                })
+                onError(e, createErrorContext('hydrate', 'parse', store.$id, plan.bucket.adapter, store.$id))
             : undefined,
         )
         
         if (parsed && typeof parsed === 'object') {
-          let slice: PartialState = parsed
-          if (typeof plan.bucket.beforeHydrate === 'function') {
-            try {
-              const maybe = plan.bucket.beforeHydrate(slice, store)
-              if (maybe && typeof maybe === 'object') slice = maybe as PartialState
-            } catch (e) {
-              onError?.(e, {
-                stage: 'hydrate',
-                storeId: store.$id,
-                adapter: plan.bucket.adapter,
-              })
-            }
-          }
-          Object.assign(mergedState, slice)
+          return { plan, slice: parsed }
         }
+        return null
       } catch (e) {
-        onError?.(e, {
-          stage: 'hydrate',
-          storeId: store.$id,
-          adapter: plan.bucket.adapter,
-        })
+        onError?.(e, createErrorContext('hydrate', 'read', store.$id, plan.bucket.adapter, store.$id))
+        return null
+      }
+    })
+
+    // Wait for all storage operations to complete
+    const results = await Promise.allSettled(storageOperations)
+    
+    // Merge all successful results in bucket order (deterministic)
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i]
+      if (result.status === 'fulfilled' && result.value) {
+        const { plan, slice } = result.value
+        
+        // Apply bucket-level include/exclude filtering to the slice
+        const filteredSlice = resolveState(slice, plan.bucket.include, plan.bucket.exclude)
+        
+        // Apply beforeHydrate hook if present (per bucket for now, but on filtered slice)
+        let finalSlice = filteredSlice
+        if (typeof plan.bucket.beforeHydrate === 'function') {
+          try {
+            const transformed = plan.bucket.beforeHydrate(filteredSlice, store)
+            if (transformed && typeof transformed === 'object') {
+              finalSlice = transformed as PartialState
+            }
+          } catch (e) {
+            onError?.(e, createErrorContext('hydrate', 'transform', store.$id, plan.bucket.adapter, store.$id))
+          }
+        }
+        
+        // Merge into final state (later buckets override earlier ones for same keys)
+        Object.assign(mergedState, finalSlice)
       }
     }
     
+    // Single atomic patch operation with persistence suppression
     if (Object.keys(mergedState).length) {
+      skipNextPersist = true
       store.$patch(mergedState)
     }
+    
+    isHydrating = false
   }
 
   // Start hydration asynchronously
@@ -190,11 +230,7 @@ export const createPiniaPluginStorage = ({
     try {
       await plan.adapter.setItem(store.$id, JSON.stringify(partialState))
     } catch (e) {
-      onError?.(e, {
-        stage: 'persist',
-        storeId: store.$id,
-        adapter: plan.bucket.adapter,
-      })
+      onError?.(e, createErrorContext('persist', 'write', store.$id, plan.bucket.adapter, store.$id))
     }
   }
 
@@ -225,11 +261,13 @@ export const createPiniaPluginStorage = ({
     }
   }
 
-  let skipNextPersist = false
-
   store.$subscribe(() => {
     if (skipNextPersist) {
       skipNextPersist = false
+      return
+    }
+    // Don't persist during hydration to avoid race conditions
+    if (isHydrating) {
       return
     }
     bucketPlans.forEach((plan) => bucketExecutors.get(plan)?.(plan))
@@ -243,22 +281,14 @@ export const createPiniaPluginStorage = ({
           const latest = await plan.adapter.getItem(store.$id)
           if (!latest) return
           const parsed = safeParse<PartialState>(latest, (e) =>
-            onError?.(e, {
-              stage: 'hydrate',
-              storeId: store.$id,
-              adapter: plan.bucket.adapter,
-            }),
+            onError?.(e, createErrorContext('sync', 'parse', store.$id, plan.bucket.adapter, store.$id))
           )
           if (parsed && typeof parsed === 'object') {
             skipNextPersist = true
             store.$patch(parsed)
           }
         } catch (e) {
-          onError?.(e, {
-            stage: 'hydrate',
-            storeId: store.$id,
-            adapter: plan.bucket.adapter,
-          })
+          onError?.(e, createErrorContext('sync', 'read', store.$id, plan.bucket.adapter, store.$id))
         }
       })
     }

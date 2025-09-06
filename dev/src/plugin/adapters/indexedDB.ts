@@ -48,7 +48,11 @@ export const indexedDBAdapter = (options: IndexedDBOptions): StorageAdapter => {
           (await idbTx<string | undefined>(dbp, options.storeName, 'readonly', (s) => s.get(k))) ??
           undefined
         )
-      } catch {
+      } catch (error) {
+        // Log error for debugging but return undefined to allow graceful degradation
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn(`IndexedDB getItem failed for key "${k}":`, error)
+        }
         return undefined
       }
     },
@@ -56,13 +60,25 @@ export const indexedDBAdapter = (options: IndexedDBOptions): StorageAdapter => {
       try {
         await idbTx<void>(dbp, options.storeName, 'readwrite', (s) => s.put(v, k))
         channel?.postMessage({ key: k })
-      } catch {}
+      } catch (error) {
+        // Log error for debugging but don't throw to allow graceful degradation
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn(`IndexedDB setItem failed for key "${k}":`, error)
+        }
+        // Re-throw to allow upper layers to handle with onError callback
+        throw error
+      }
     },
     async removeItem(k) {
       try {
         await idbTx<void>(dbp, options.storeName, 'readwrite', (s) => s.delete(k))
         channel?.postMessage({ key: k })
-      } catch {}
+      } catch (error) {
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn(`IndexedDB removeItem failed for key "${k}":`, error)
+        }
+        throw error
+      }
     },
     subscribe(key, cb) {
       if (!channel) return () => {}
