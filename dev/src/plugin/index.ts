@@ -113,134 +113,154 @@ export const updateStorage = async (bucket: Bucket, store: Store) => {
   await storage.setItem(store.$id, JSON.stringify(partialState))
 }
 
-export const createPiniaPluginStorage = async ({
+export const createPiniaPluginStorage = ({
   options,
   store,
-}: PiniaPluginContext): Promise<void> => {
+}: PiniaPluginContext): void => {
   // SSR guard: skip all persistence logic when window is not available
   if (typeof window === 'undefined') return
-  if (options.storage) {
+  if (!options.storage) return
+
   const buckets = resolveBuckets(options.storage)
-    const bucketPlans: BucketPlan[] = buckets.map((b) => ({ bucket: b, adapter: resolveStorage(b) }))
-  const mergedState: PartialState = {}
-    const onError = resolveOnError(options.storage)
+  const bucketPlans: BucketPlan[] = buckets.map((b) => ({ bucket: b, adapter: resolveStorage(b) }))
+  const onError = resolveOnError(options.storage)
+
+  // Handle async hydration without blocking plugin registration
+  const performHydration = async () => {
+    const mergedState: PartialState = {}
+    
     for (const plan of bucketPlans) {
-      const storageResult = await plan.adapter.getItem(store.$id)
-      if (!storageResult) continue
-      const parsed = safeParse<PartialState>(
-        storageResult,
-        onError
-          ? (e) =>
-              onError(e, {
+      try {
+        const storageResult = await plan.adapter.getItem(store.$id)
+        if (!storageResult) continue
+        
+        const parsed = safeParse<PartialState>(
+          storageResult,
+          onError
+            ? (e) =>
+                onError(e, {
+                  stage: 'hydrate',
+                  storeId: store.$id,
+                  adapter: plan.bucket.adapter,
+                })
+            : undefined,
+        )
+        
+        if (parsed && typeof parsed === 'object') {
+          let slice: PartialState = parsed
+          if (typeof plan.bucket.beforeHydrate === 'function') {
+            try {
+              const maybe = plan.bucket.beforeHydrate(slice, store)
+              if (maybe && typeof maybe === 'object') slice = maybe as PartialState
+            } catch (e) {
+              onError?.(e, {
                 stage: 'hydrate',
                 storeId: store.$id,
                 adapter: plan.bucket.adapter,
               })
-          : undefined,
-      )
-      if (parsed && typeof parsed === 'object') {
-        let slice: PartialState = parsed
-        if (typeof plan.bucket.beforeHydrate === 'function') {
-          try {
-            const maybe = plan.bucket.beforeHydrate(slice, store)
-            if (maybe && typeof maybe === 'object') slice = maybe as PartialState
-          } catch (e) {
-            onError?.(e, {
-              stage: 'hydrate',
-              storeId: store.$id,
-              adapter: plan.bucket.adapter,
-            })
+            }
           }
+          Object.assign(mergedState, slice)
         }
-        Object.assign(mergedState, slice)
-      }
-    }
-    if (Object.keys(mergedState).length) {
-      store.$patch(mergedState)
-    }
-
-    const debounceDelayMs =
-      typeof options.storage === 'object' && 'debounceDelayMs' in options.storage
-        ? options.storage.debounceDelayMs || 0
-        : 0
-
-    const persistPlan = async (plan: BucketPlan) => {
-      const partialState = resolveState(store.$state, plan.bucket.include, plan.bucket.exclude)
-      try {
-        await plan.adapter.setItem(store.$id, JSON.stringify(partialState))
       } catch (e) {
         onError?.(e, {
-          stage: 'persist',
+          stage: 'hydrate',
           storeId: store.$id,
           adapter: plan.bucket.adapter,
         })
       }
     }
+    
+    if (Object.keys(mergedState).length) {
+      store.$patch(mergedState)
+    }
+  }
 
-    // Build per-bucket debounced functions
-    const bucketExecutors = new Map<BucketPlan, (p: BucketPlan) => void>()
-    for (const plan of bucketPlans) {
-      const delay = plan.bucket.debounceDelayMs ?? debounceDelayMs
-      const immediate = !delay || delay <= 0
+  // Start hydration asynchronously
+  void performHydration()
+
+  // Set up persistence logic synchronously
+  const debounceDelayMs =
+    typeof options.storage === 'object' && 'debounceDelayMs' in options.storage
+      ? options.storage.debounceDelayMs || 0
+      : 0
+
+  const persistPlan = async (plan: BucketPlan) => {
+    const partialState = resolveState(store.$state, plan.bucket.include, plan.bucket.exclude)
+    try {
+      await plan.adapter.setItem(store.$id, JSON.stringify(partialState))
+    } catch (e) {
+      onError?.(e, {
+        stage: 'persist',
+        storeId: store.$id,
+        adapter: plan.bucket.adapter,
+      })
+    }
+  }
+
+  // Build per-bucket debounced functions
+  const bucketExecutors = new Map<BucketPlan, (p: BucketPlan) => void>()
+  for (const plan of bucketPlans) {
+    const delay = plan.bucket.debounceDelayMs ?? debounceDelayMs
+    const immediate = !delay || delay <= 0
+    if (immediate) {
+      // no debounce: call persist directly
+      bucketExecutors.set(plan, () => { void persistPlan(plan) })
+    } else {
+      const debounced = debounce((p: BucketPlan) => { void persistPlan(p) }, delay)
       if (immediate) {
-        // no debounce: call persist directly
-        bucketExecutors.set(plan, () => { void persistPlan(plan) })
-      } else {
-        const debounced = debounce((p: BucketPlan) => { void persistPlan(p) }, delay)
-        if (immediate) {
-          bucketExecutors.set(plan, (() => {
-            let first = true
-            return (p: BucketPlan) => {
-              if (first) {
-                first = false
-                void persistPlan(p)
-              }
-              debounced(p)
+        bucketExecutors.set(plan, (() => {
+          let first = true
+          return (p: BucketPlan) => {
+            if (first) {
+              first = false
+              void persistPlan(p)
             }
-          })())
-        } else {
-          bucketExecutors.set(plan, debounced)
-        }
+            debounced(p)
+          }
+        })())
+      } else {
+        bucketExecutors.set(plan, debounced)
       }
     }
+  }
 
-    let skipNextPersist = false
+  let skipNextPersist = false
 
-    store.$subscribe(() => {
-      if (skipNextPersist) {
-        skipNextPersist = false
-        return
-      }
-  bucketPlans.forEach((plan) => bucketExecutors.get(plan)?.(plan))
-    })
+  store.$subscribe(() => {
+    if (skipNextPersist) {
+      skipNextPersist = false
+      return
+    }
+    bucketPlans.forEach((plan) => bucketExecutors.get(plan)?.(plan))
+  })
 
   // External subscription (cross-tab / channel updates)
-    for (const plan of bucketPlans) {
-  if (typeof plan.adapter.subscribe === 'function') {
-        plan.adapter.subscribe(store.$id, async () => {
-          try {
-            const latest = await plan.adapter.getItem(store.$id)
-            if (!latest) return
-            const parsed = safeParse<PartialState>(latest, (e) =>
-              onError?.(e, {
-                stage: 'hydrate',
-                storeId: store.$id,
-                adapter: plan.bucket.adapter,
-              }),
-            )
-            if (parsed && typeof parsed === 'object') {
-              skipNextPersist = true
-              store.$patch(parsed)
-            }
-          } catch (e) {
+  for (const plan of bucketPlans) {
+    if (typeof plan.adapter.subscribe === 'function') {
+      plan.adapter.subscribe(store.$id, async () => {
+        try {
+          const latest = await plan.adapter.getItem(store.$id)
+          if (!latest) return
+          const parsed = safeParse<PartialState>(latest, (e) =>
             onError?.(e, {
               stage: 'hydrate',
               storeId: store.$id,
               adapter: plan.bucket.adapter,
-            })
+            }),
+          )
+          if (parsed && typeof parsed === 'object') {
+            skipNextPersist = true
+            store.$patch(parsed)
           }
-        })
-      }
+        } catch (e) {
+          onError?.(e, {
+            stage: 'hydrate',
+            storeId: store.$id,
+            adapter: plan.bucket.adapter,
+          })
+        }
+      })
     }
   }
 }
