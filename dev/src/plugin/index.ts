@@ -1,12 +1,10 @@
 import type { PiniaPluginContext } from 'pinia'
 import './types'
 import type { Bucket, StorageOptions } from './types'
-import cookiesStorage, { createCookiesStorage } from './adapters/cookies'
-import type { CookieOptions } from './adapters/cookies'
+import type { StorageAdapter } from './adapters'
+import { adapters } from './adapters'
 
 export type { Bucket, StorageOptions }
-export { createCookiesStorage } from './adapters/cookies'
-export type { CookieOptions } from './adapters/cookies'
 
 type Store = PiniaPluginContext['store']
 type PartialState = Partial<Store['$state']>
@@ -56,43 +54,42 @@ const resolveBuckets = (options: StorageOptions | undefined): Bucket[] => {
   return defaultBucket
 }
 
-const resolveStorage = (bucket: Bucket): Storage => {
-  const storageMap: Record<string, Storage> = {
-    cookies: cookiesStorage,
-    localStorage: localStorage,
-    sessionStorage: sessionStorage,
-  }
-  let storage = storageMap[bucket.adapter || 'sessionStorage']
-  if (storage === cookiesStorage) {
-    storage = createCookiesStorage((bucket as Bucket & { options: CookieOptions }).options)
-  }
-  return storage
+const resolveStorage = (bucket: Bucket): StorageAdapter => {
+  if (bucket.adapter === 'cookies') return adapters[bucket.adapter](bucket.options)
+  if (bucket.adapter === 'indexedDB')
+    return adapters[bucket.adapter](bucket.options || { dbName: 'pinia', storeName: 'keyval' })
+  if (bucket.adapter === 'localStorage' || bucket.adapter === 'sessionStorage')
+    return adapters[bucket.adapter]()
+  return adapters['sessionStorage']()
 }
 
-export const updateStorage = (bucket: Bucket, store: Store) => {
+export const updateStorage = async (bucket: Bucket, store: Store) => {
   const storage = resolveStorage(bucket)
   const partialState = resolveState(store.$state, bucket.include, bucket.exclude)
-  storage.setItem(store.$id, JSON.stringify(partialState))
+  await storage.setItem(store.$id, JSON.stringify(partialState))
 }
 
-export const createPiniaPluginStorage = ({ options, store }: PiniaPluginContext): void => {
+export const createPiniaPluginStorage = async ({
+  options,
+  store,
+}: PiniaPluginContext): Promise<void> => {
   if (options.storage) {
     const buckets = resolveBuckets(options.storage)
 
-    buckets.forEach((bucket) => {
+    for (const bucket of buckets) {
       const storage = resolveStorage(bucket)
 
-      const storageResult = storage.getItem(store.$id)
+      const storageResult = await storage.getItem(store.$id)
 
       if (storageResult) {
         store.$patch(JSON.parse(storageResult))
-        updateStorage(bucket, store)
+        await updateStorage(bucket, store)
       }
-    })
+    }
 
     store.$subscribe(() => {
-      buckets.forEach((bucket) => {
-        updateStorage(bucket, store)
+      buckets.forEach(async (bucket) => {
+        await updateStorage(bucket, store)
       })
     })
   }
