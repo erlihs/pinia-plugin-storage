@@ -86,23 +86,17 @@ export const createPiniaPluginStorage = async ({
   if (options.storage) {
     const buckets = resolveBuckets(options.storage)
     const bucketPlans: BucketPlan[] = buckets.map((b) => ({ bucket: b, adapter: resolveStorage(b) }))
-
+  const mergedState: PartialState = {}
     for (const plan of bucketPlans) {
-      const storageResult = await plan.adapter.getItem(store.$id)
-      if (storageResult) {
-        try {
-          store.$patch(JSON.parse(storageResult))
-        } catch {
-        }
+      try {
+        const storageResult = await plan.adapter.getItem(store.$id)
+        if (!storageResult) continue
+        const parsed = JSON.parse(storageResult)
+        if (parsed && typeof parsed === 'object') Object.assign(mergedState, parsed)
+      } catch {
       }
     }
-
-    const debounceDelayMs =
-      typeof options.storage === 'object' && 'debounceDelayMs' in options.storage
-        ? options.storage.debounceDelayMs || 0
-        : 0
-
-    const persistPlan = async (plan: BucketPlan) => {
+    if (Object.keys(mergedState).length) {
       if (
         typeof options.storage === 'object' &&
         'beforeHydrate' in options.storage &&
@@ -110,6 +104,15 @@ export const createPiniaPluginStorage = async ({
       ) {
         options.storage.beforeHydrate(store)
       }
+      store.$patch(mergedState)
+    }
+
+    const debounceDelayMs =
+      typeof options.storage === 'object' && 'debounceDelayMs' in options.storage
+        ? options.storage.debounceDelayMs || 0
+        : 0
+
+  const persistPlan = async (plan: BucketPlan) => {
       const partialState = resolveState(store.$state, plan.bucket.include, plan.bucket.exclude)
       await plan.adapter.setItem(store.$id, JSON.stringify(partialState))
     }
