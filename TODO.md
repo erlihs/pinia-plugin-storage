@@ -52,7 +52,7 @@ This document captures the current assessment of `src/plugin` (Pinia persistence
 ### Phase 1 (Correctness & Safety)
 - [x] Centralize bucket resolution; create adapter instances once; cache in map keyed by bucket identity. (Implemented)
 - [x] Collect all bucket payloads first → merge → invoke `beforeHydrate` hook once → single `$patch` → defer first write until after hydration completes. (Implemented)
-- [ ] Add safe parse (`try/catch`) with optional `onCorruptData` callback + auto-purge strategy.
+- [x] Add safe parse (`try/catch`) with optional `onCorruptData` callback + auto-purge strategy (implemented basic safe parse + onError hook).
 - [ ] Enforce mutual exclusion of `include` & `exclude` at type level (`type ExclusiveIncludeExclude = { include: ...; exclude?: never } | { exclude: ...; include?: never } | {}`).
 - [ ] Make `adapter` required in `Bucket`; provide top-level `defaultAdapter` fallback.
 - [ ] Rename or reposition `beforeHydrate` (true semantics) or add `beforePersist` if both needed.
@@ -182,7 +182,6 @@ interface GlobalStorageOptions {
 
 ---
 ## 11. Quick Win Candidates
-- Safe parse + error hook
 - Use adapter.subscribe
 
 Implement those first to mitigate most correctness and performance risks.

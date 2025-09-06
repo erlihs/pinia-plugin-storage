@@ -73,6 +73,29 @@ const resolveStorage = (bucket: Bucket): StorageAdapter => {
 
 type BucketPlan = { bucket: Bucket; adapter: StorageAdapter }
 
+const safeParse = <T = unknown>(raw: string, onError?: (err: unknown) => void): T | undefined => {
+  try {
+    return JSON.parse(raw) as T
+  } catch (err) {
+    onError?.(err)
+    return undefined
+  }
+}
+
+type OnErrorFn = (error: unknown, ctx: { stage: 'hydrate' | 'persist'; storeId: string; adapter: string }) => void
+
+interface MaybeOnError {
+  onError?: OnErrorFn
+}
+
+const hasOnError = (val: unknown): val is MaybeOnError =>
+  !!val && typeof val === 'object' && 'onError' in val
+
+const resolveOnError = (storageOption: StorageOptions | undefined): OnErrorFn | undefined => {
+  if (hasOnError(storageOption)) return storageOption.onError
+  return undefined
+}
+
 export const updateStorage = async (bucket: Bucket, store: Store) => {
   const storage = resolveStorage(bucket)
   const partialState = resolveState(store.$state, bucket.include, bucket.exclude)
@@ -87,14 +110,22 @@ export const createPiniaPluginStorage = async ({
     const buckets = resolveBuckets(options.storage)
     const bucketPlans: BucketPlan[] = buckets.map((b) => ({ bucket: b, adapter: resolveStorage(b) }))
   const mergedState: PartialState = {}
+    const onError = resolveOnError(options.storage)
     for (const plan of bucketPlans) {
-      try {
-        const storageResult = await plan.adapter.getItem(store.$id)
-        if (!storageResult) continue
-        const parsed = JSON.parse(storageResult)
-        if (parsed && typeof parsed === 'object') Object.assign(mergedState, parsed)
-      } catch {
-      }
+      const storageResult = await plan.adapter.getItem(store.$id)
+      if (!storageResult) continue
+      const parsed = safeParse<PartialState>(
+        storageResult,
+        onError
+          ? (e) =>
+              onError(e, {
+                stage: 'hydrate',
+                storeId: store.$id,
+                adapter: plan.bucket.adapter || 'sessionStorage',
+              })
+          : undefined,
+      )
+      if (parsed && typeof parsed === 'object') Object.assign(mergedState, parsed)
     }
     if (Object.keys(mergedState).length) {
       if (
@@ -112,9 +143,17 @@ export const createPiniaPluginStorage = async ({
         ? options.storage.debounceDelayMs || 0
         : 0
 
-  const persistPlan = async (plan: BucketPlan) => {
+    const persistPlan = async (plan: BucketPlan) => {
       const partialState = resolveState(store.$state, plan.bucket.include, plan.bucket.exclude)
-      await plan.adapter.setItem(store.$id, JSON.stringify(partialState))
+      try {
+        await plan.adapter.setItem(store.$id, JSON.stringify(partialState))
+      } catch (e) {
+        onError?.(e, {
+          stage: 'persist',
+          storeId: store.$id,
+          adapter: plan.bucket.adapter || 'sessionStorage',
+        })
+      }
     }
 
     const debouncedUpdateStorage =

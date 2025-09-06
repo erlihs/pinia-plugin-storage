@@ -32,6 +32,7 @@ export type StorageOptions =
   | {
       buckets?: Bucket[]
       debounceDelayMs?: number
+  onError?: (error: unknown, ctx: { stage: 'hydrate' | 'persist'; storeId: string; adapter: string }) => void
     }
 
 declare module 'pinia' {
