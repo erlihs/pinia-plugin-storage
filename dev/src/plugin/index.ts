@@ -1,14 +1,28 @@
 import type { PiniaPluginContext } from 'pinia'
 import './types'
-import type { StorageStrategy, StorageOptions } from './types'
+import type { StorageBucket, StorageOptions } from './types'
+import { createCookiesStorage } from './adapters/cookies'
 
-export type { StorageStrategy, StorageOptions }
+export type { StorageBucket, StorageOptions }
+export { createCookiesStorage } from './adapters/cookies'
+export type { CookieOptions } from './adapters/cookies'
 
 type Store = PiniaPluginContext['store']
 type PartialState = Partial<Store['$state']>
 
-export const updateStorage = (strategy: StorageStrategy, store: Store) => {
-  const storage = strategy.storage || sessionStorage
+export const updateStorage = (strategy: StorageBucket, store: Store) => {
+  // Handle cookie storage with options
+  let storage = strategy.storage || sessionStorage
+  
+  // If using cookies and cookieOptions are provided, create a configured storage
+  if (strategy.cookieOptions && 
+      (storage === window.sessionStorage || storage === window.localStorage || 
+       typeof storage === 'object' && 'setItem' in storage)) {
+    // Only apply cookie options if we're likely dealing with cookies
+    // You might want to add a more specific check here
+    storage = createCookiesStorage(strategy.cookieOptions)
+  }
+  
   const storeKey = strategy.key || store.$id
 
   if (strategy.paths) {
@@ -24,32 +38,41 @@ export const updateStorage = (strategy: StorageStrategy, store: Store) => {
 }
 
 export const createPiniaPluginStorage = ({ options, store }: PiniaPluginContext): void => {
-  if (options.storage?.enabled) {
-    const defaultStrat: StorageStrategy[] = [
+  if (options.storage) {
+    const defaultStrat: StorageBucket[] = [
       {
         key: store.$id,
         storage: sessionStorage,
       },
     ]
 
-    const strategies = options.storage?.strategies?.length
-      ? options.storage?.strategies
+    const buckets = options.storage?.buckets?.length
+      ? options.storage?.buckets
       : defaultStrat
 
-    strategies.forEach((strategy) => {
-      const storage = strategy.storage || sessionStorage
-      const storeKey = strategy.key || store.$id
+    buckets.forEach((bucket) => {
+      // Handle cookie storage with options
+      let storage = bucket.storage || sessionStorage
+
+      // If using cookies and cookieOptions are provided, create a configured storage
+      if (bucket.cookieOptions &&
+          (storage === window.sessionStorage || storage === window.localStorage || 
+           typeof storage === 'object' && 'setItem' in storage)) {
+        storage = createCookiesStorage(bucket.cookieOptions)
+      }
+
+      const storeKey = bucket.key || store.$id
       const storageResult = storage.getItem(storeKey)
 
       if (storageResult) {
         store.$patch(JSON.parse(storageResult))
-        updateStorage(strategy, store)
+        updateStorage(bucket, store)
       }
     })
 
     store.$subscribe(() => {
-      strategies.forEach((strategy) => {
-        updateStorage(strategy, store)
+      buckets.forEach((bucket) => {
+        updateStorage(bucket, store)
       })
     })
   }

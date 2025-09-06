@@ -1,14 +1,17 @@
 import 'pinia'
 
-export interface StorageStrategy {
+import cookiesStorage from './adapters/cookies'
+import type { CookieOptions } from './adapters/cookies'
+
+export interface StorageBucket {
   key?: string
-  storage?: Storage
+  storage?: Storage | typeof cookiesStorage
   paths?: string[]
+  cookieOptions?: CookieOptions // Add cookie options support
 }
 
 export interface StorageOptions {
-  enabled: true
-  strategies?: StorageStrategy[]
+  buckets?: StorageBucket[]
 }
 
 declare module 'pinia' {
@@ -29,3 +32,5 @@ declare module 'pinia' {
     }
   }
 }
+
+export { cookiesStorage }
