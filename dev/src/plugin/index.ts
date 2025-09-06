@@ -71,6 +71,8 @@ const resolveStorage = (bucket: Bucket): StorageAdapter => {
   return adapters['sessionStorage']()
 }
 
+type BucketPlan = { bucket: Bucket; adapter: StorageAdapter }
+
 export const updateStorage = async (bucket: Bucket, store: Store) => {
   const storage = resolveStorage(bucket)
   const partialState = resolveState(store.$state, bucket.include, bucket.exclude)
@@ -83,15 +85,15 @@ export const createPiniaPluginStorage = async ({
 }: PiniaPluginContext): Promise<void> => {
   if (options.storage) {
     const buckets = resolveBuckets(options.storage)
+    const bucketPlans: BucketPlan[] = buckets.map((b) => ({ bucket: b, adapter: resolveStorage(b) }))
 
-    for (const bucket of buckets) {
-      const storage = resolveStorage(bucket)
-
-      const storageResult = await storage.getItem(store.$id)
-
+    for (const plan of bucketPlans) {
+      const storageResult = await plan.adapter.getItem(store.$id)
       if (storageResult) {
-        store.$patch(JSON.parse(storageResult))
-        await updateStorage(bucket, store)
+        try {
+          store.$patch(JSON.parse(storageResult))
+        } catch {
+        }
       }
     }
 
@@ -100,7 +102,7 @@ export const createPiniaPluginStorage = async ({
         ? options.storage.debounceDelayMs || 0
         : 0
 
-    const updateStorageForBucket = async (bucket: Bucket) => {
+    const persistPlan = async (plan: BucketPlan) => {
       if (
         typeof options.storage === 'object' &&
         'beforeHydrate' in options.storage &&
@@ -108,17 +110,17 @@ export const createPiniaPluginStorage = async ({
       ) {
         options.storage.beforeHydrate(store)
       }
-
-      await updateStorage(bucket, store)
+      const partialState = resolveState(store.$state, plan.bucket.include, plan.bucket.exclude)
+      await plan.adapter.setItem(store.$id, JSON.stringify(partialState))
     }
 
     const debouncedUpdateStorage =
       debounceDelayMs > 0
-        ? debounce(updateStorageForBucket, debounceDelayMs)
-        : updateStorageForBucket
+        ? debounce(persistPlan, debounceDelayMs)
+        : persistPlan
 
     store.$subscribe(() => {
-      buckets.forEach(debouncedUpdateStorage)
+      bucketPlans.forEach(debouncedUpdateStorage)
     })
   }
 }
