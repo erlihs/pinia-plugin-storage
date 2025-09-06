@@ -6,8 +6,8 @@ Phase 1: Critical Fixes
 ✅ Implement proper external sync - Use adapter subscriptions correctly
 ✅ Add SSR guard at function start
 Phase 2: Performance & Features
-Per-bucket debouncing - More granular control
-Change detection - Avoid unnecessary writes
+🔄 Per-bucket debouncing - More granular control (SKIPPED - basic implementation sufficient)
+✅ Change detection - Avoid unnecessary writes
 Key namespacing - Prevent collisions and enable versioning
 Store lifecycle integration - Handle $reset and cleanup
 Phase 3: Developer Experience

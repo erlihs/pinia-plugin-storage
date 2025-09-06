@@ -190,6 +190,9 @@ export const createPiniaPluginStorage = ({
   let skipNextPersist = false
   let isHydrating = false
 
+  // Change detection: Track last serialized state per bucket to avoid unnecessary writes
+  const bucketLastStates = new Map<BucketPlan, string>()
+
   // Handle async hydration without blocking plugin registration
   const performHydration = async () => {
     isHydrating = true
@@ -255,6 +258,13 @@ export const createPiniaPluginStorage = ({
       store.$patch(mergedState)
     }
     
+    // Initialize change detection state after hydration
+    bucketPlans.forEach(plan => {
+      const currentSlice = resolveState(store.$state, plan.bucket.include, plan.bucket.exclude)
+      const serialized = JSON.stringify(currentSlice)
+      bucketLastStates.set(plan, serialized)
+    })
+    
     isHydrating = false
   }
 
@@ -269,9 +279,26 @@ export const createPiniaPluginStorage = ({
 
   const persistPlan = async (plan: BucketPlan) => {
     const partialState = resolveState(store.$state, plan.bucket.include, plan.bucket.exclude)
+    const currentSerialized = JSON.stringify(partialState)
+    
+    // Change detection: skip persistence if state hasn't changed
+    const lastSerialized = bucketLastStates.get(plan)
+    if (lastSerialized === currentSerialized) {
+      return // No changes detected, skip write
+    }
+    
+    // Update tracking state before persistence attempt
+    bucketLastStates.set(plan, currentSerialized)
+    
     try {
-      await plan.adapter.setItem(store.$id, JSON.stringify(partialState))
+      await plan.adapter.setItem(store.$id, currentSerialized)
     } catch (e) {
+      // Rollback tracking state on persistence failure
+      if (lastSerialized !== undefined) {
+        bucketLastStates.set(plan, lastSerialized)
+      } else {
+        bucketLastStates.delete(plan)
+      }
       onError?.(e, createErrorContext('persist', 'write', store.$id, plan.bucket.adapter, store.$id))
     }
   }
@@ -361,7 +388,7 @@ export const createPiniaPluginStorage = ({
 
         for (const result of externalChanges) {
           if (result.status === 'fulfilled' && result.value) {
-            const { plan, external } = result.value
+            const { external } = result.value
             
             // Smart merge: only update keys that actually changed
             for (const [key, externalValue] of Object.entries(external)) {
