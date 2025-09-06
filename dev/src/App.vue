@@ -4,11 +4,13 @@ import {
   useCounterStoreDefault,
   useCounterStoreAdvanced,
   useCounterStoreSession,
+  useCounterStoreIndexedDB,
 } from './stores/counter'
 const counterStore = useCounterStore()
 const counterStoreDefault = useCounterStoreDefault()
 const counterStoreAdvanced = useCounterStoreAdvanced()
 const counterStoreSession = useCounterStoreSession()
+const counterStoreIndexedDB = useCounterStoreIndexedDB()
 </script>
 
 <template>
@@ -54,6 +56,13 @@ const counterStoreSession = useCounterStoreSession()
         <td><button @click="counterStoreSession.increment()">+</button></td>
         <td>{{ counterStoreSession.count }}</td>
         <td>{{ counterStoreSession.extCount }}</td>
+        <td>Values should persist after page reload</td>
+      </tr>
+      <tr>
+        <td>indexedDB</td>
+        <td><button @click="counterStoreIndexedDB.increment()">+</button></td>
+        <td>{{ counterStoreIndexedDB.count }}</td>
+        <td>{{ counterStoreIndexedDB.extCount }}</td>
         <td>Values should persist after page reload</td>
       </tr>
     </tbody>

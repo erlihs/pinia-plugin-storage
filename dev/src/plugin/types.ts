@@ -1,9 +1,8 @@
 import 'pinia'
 
-//import cookiesStorage from './adapters/cookies'
-import type { CookieOptions } from './adapters/cookies'
+import type { IndexedDBOptions, CookieOptions } from './adapters'
 
-type Adapters = 'cookies' | 'localStorage' | 'sessionStorage'
+type Adapters = 'cookies' | 'localStorage' | 'sessionStorage' | 'indexedDB'
 
 type BaseBucket = {
   include?: string[] | string
@@ -14,6 +13,10 @@ export type Bucket =
   | (BaseBucket & {
       adapter?: 'cookies'
       options?: CookieOptions
+    })
+  | (BaseBucket & {
+      adapter?: 'indexedDB'
+      options?: IndexedDBOptions
     })
   | (BaseBucket & {
       adapter?: 'localStorage' | 'sessionStorage'
