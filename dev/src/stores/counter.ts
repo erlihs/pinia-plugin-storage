@@ -187,3 +187,46 @@ export const useCounterStoreCrossTab = defineStore(
     },
   },
 )
+
+// Demo store showcasing KEY NAMESPACING features - prevents collisions and enables versioning
+export const useCounterStoreNamespaced = defineStore(
+  'counter-namespaced',
+  () => {
+    const count = ref(0)
+    const metadata = ref({ 
+      version: '2.0',
+      lastUpdated: new Date().toISOString()
+    })
+
+    function increment() {
+      count.value++
+      metadata.value.lastUpdated = new Date().toISOString()
+    }
+
+    return { count, metadata, increment }
+  },
+  {
+    storage: {
+      // Global namespacing prevents app collisions
+      namespace: 'myApp',                    // Keys: "myApp:v2:counter-namespaced:main"
+      version: '2',                          // Enables schema migration from v1 → v2
+      
+      buckets: [
+        {
+          adapter: 'localStorage',
+          key: 'main',                       // Bucket identifier for multi-bucket setups
+          include: ['count', 'metadata'],
+        },
+        {
+          adapter: 'sessionStorage', 
+          key: 'cache',                      // Keys: "myApp:v2:counter-namespaced:cache"
+          include: ['metadata'],             // Different bucket for temporary metadata
+        },
+      ],
+      
+      onError: (error, ctx) => {
+        console.warn(`Namespaced storage error in ${ctx.stage}/${ctx.operation} for key ${ctx.key}:`, error)
+      },
+    },
+  },
+)

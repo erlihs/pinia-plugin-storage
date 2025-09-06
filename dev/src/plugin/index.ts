@@ -81,6 +81,37 @@ const resolveState = (
   }
 }
 
+const generateStorageKey = (
+  storeId: string,
+  bucket: Bucket,
+  globalNamespace?: string,
+  globalVersion?: string,
+): string => {
+  // Build key components: [namespace]:[version]:[storeId]:[bucketKey]
+  const parts: string[] = []
+  
+  // Add namespace (prevents app collisions)
+  if (globalNamespace) {
+    parts.push(globalNamespace)
+  }
+  
+  // Add version (enables schema migration)
+  if (globalVersion) {
+    parts.push(`v${globalVersion}`)
+  }
+  
+  // Always include store ID
+  parts.push(storeId)
+  
+  // Add bucket key if specified (enables multi-bucket distinction)
+  if (bucket.key) {
+    parts.push(bucket.key)
+  }
+  
+  // Join with colon separator, fallback to storeId for backwards compatibility
+  return parts.length > 1 ? parts.join(':') : storeId
+}
+
 const resolveBuckets = (options: StorageOptions | undefined): Bucket[] => {
   const configuredDefault: Adapters | undefined =
     typeof options === 'object' && options && 'defaultAdapter' in options ? options.defaultAdapter : undefined
@@ -186,6 +217,10 @@ export const createPiniaPluginStorage = ({
   const buckets = resolveBuckets(options.storage)
   const bucketPlans: BucketPlan[] = buckets.map((b) => ({ bucket: b, adapter: resolveStorage(b) }))
   const onError = resolveOnError(options.storage)
+  
+  // Extract namespacing configuration
+  const globalNamespace = typeof options.storage === 'object' && 'namespace' in options.storage ? options.storage.namespace : undefined
+  const globalVersion = typeof options.storage === 'object' && 'version' in options.storage ? options.storage.version : undefined
 
   let skipNextPersist = false
   let isHydrating = false
@@ -201,14 +236,16 @@ export const createPiniaPluginStorage = ({
     // Collect all storage operations in parallel to avoid sequential race conditions
     const storageOperations = bucketPlans.map(async (plan) => {
       try {
-        const storageResult = await plan.adapter.getItem(store.$id)
+        // Generate namespaced storage key
+        const storageKey = generateStorageKey(store.$id, plan.bucket, globalNamespace, globalVersion)
+        const storageResult = await plan.adapter.getItem(storageKey)
         if (!storageResult) return null
         
         const parsed = safeParse<PartialState>(
           storageResult,
           onError
             ? (e) =>
-                onError(e, createErrorContext('hydrate', 'parse', store.$id, plan.bucket.adapter, store.$id))
+                onError(e, createErrorContext('hydrate', 'parse', store.$id, plan.bucket.adapter, storageKey))
             : undefined,
         )
         
@@ -217,7 +254,8 @@ export const createPiniaPluginStorage = ({
         }
         return null
       } catch (e) {
-        onError?.(e, createErrorContext('hydrate', 'read', store.$id, plan.bucket.adapter, store.$id))
+        const storageKey = generateStorageKey(store.$id, plan.bucket, globalNamespace, globalVersion)
+        onError?.(e, createErrorContext('hydrate', 'read', store.$id, plan.bucket.adapter, storageKey))
         return null
       }
     })
@@ -243,7 +281,8 @@ export const createPiniaPluginStorage = ({
               finalSlice = transformed as PartialState
             }
           } catch (e) {
-            onError?.(e, createErrorContext('hydrate', 'transform', store.$id, plan.bucket.adapter, store.$id))
+            const storageKey = generateStorageKey(store.$id, plan.bucket, globalNamespace, globalVersion)
+            onError?.(e, createErrorContext('hydrate', 'transform', store.$id, plan.bucket.adapter, storageKey))
           }
         }
         
@@ -290,8 +329,11 @@ export const createPiniaPluginStorage = ({
     // Update tracking state before persistence attempt
     bucketLastStates.set(plan, currentSerialized)
     
+    // Generate namespaced storage key
+    const storageKey = generateStorageKey(store.$id, plan.bucket, globalNamespace, globalVersion)
+    
     try {
-      await plan.adapter.setItem(store.$id, currentSerialized)
+      await plan.adapter.setItem(storageKey, currentSerialized)
     } catch (e) {
       // Rollback tracking state on persistence failure
       if (lastSerialized !== undefined) {
@@ -299,7 +341,7 @@ export const createPiniaPluginStorage = ({
       } else {
         bucketLastStates.delete(plan)
       }
-      onError?.(e, createErrorContext('persist', 'write', store.$id, plan.bucket.adapter, store.$id))
+      onError?.(e, createErrorContext('persist', 'write', store.$id, plan.bucket.adapter, storageKey))
     }
   }
 
@@ -365,11 +407,13 @@ export const createPiniaPluginStorage = ({
             const plan = subscribablePlans.find(p => p.bucket.adapter === adapter)
             if (!plan) return null
             
-            const latest = await plan.adapter.getItem(store.$id)
+            // Generate namespaced storage key
+            const storageKey = generateStorageKey(store.$id, plan.bucket, globalNamespace, globalVersion)
+            const latest = await plan.adapter.getItem(storageKey)
             if (!latest) return null
             
             const parsed = safeParse<PartialState>(latest, (e) =>
-              onError?.(e, createErrorContext('sync', 'parse', store.$id, plan.bucket.adapter, store.$id))
+              onError?.(e, createErrorContext('sync', 'parse', store.$id, plan.bucket.adapter, storageKey))
             )
             
             if (parsed && typeof parsed === 'object') {
@@ -415,7 +459,9 @@ export const createPiniaPluginStorage = ({
 
     // Set up subscriptions for each subscribable adapter
     for (const plan of subscribablePlans) {
-      plan.adapter.subscribe!(store.$id, () => {
+      // Generate namespaced storage key for subscription
+      const storageKey = generateStorageKey(store.$id, plan.bucket, globalNamespace, globalVersion)
+      plan.adapter.subscribe!(storageKey, () => {
         // Mark this adapter as having pending changes
         pendingSyncSources.add(plan.bucket.adapter)
         

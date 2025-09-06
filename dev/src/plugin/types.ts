@@ -11,6 +11,8 @@ type Neither = { include?: undefined; exclude?: undefined }
 type ExclusiveIncludeExclude = IncludeOnly | ExcludeOnly | Neither
 
 type BaseBucket = ExclusiveIncludeExclude & {
+  // Storage key for this bucket (enables namespacing and prevents collisions)
+  key?: string
   // Allows transforming the persisted slice before it's merged into the store.
   // Return value (if object) replaces the slice; otherwise in-place mutation is honored.
   beforeHydrate?: (slice: unknown, store: Store) => unknown | void
@@ -35,6 +37,10 @@ export type StorageOptions =
   | Adapters
   | Bucket
   | {
+      // Global namespace for all storage keys (prevents app collisions)
+      namespace?: string
+      // Schema version for data migration support
+      version?: string
       buckets?: Bucket[]
       defaultAdapter?: Adapters
       debounceDelayMs?: number
