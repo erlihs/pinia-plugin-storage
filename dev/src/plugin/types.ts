@@ -1,6 +1,5 @@
 import 'pinia'
 import type { UnwrapRef } from 'vue'
-
 import type { IndexedDBOptions, CookieOptions } from './adapters'
 import type { Store } from 'pinia'
 
@@ -37,26 +36,16 @@ export type StorageOptions =
   | {
       buckets?: Bucket[]
       debounceDelayMs?: number
-  onError?: (error: unknown, ctx: { stage: 'hydrate' | 'persist'; storeId: string; adapter: string }) => void
+      onError?: (error: unknown, ctx: { stage: 'hydrate' | 'persist'; storeId: string; adapter: string }) => void
     }
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
 declare module 'pinia' {
   export interface DefineStoreOptionsBase<S, Store> {
-    storage?: StorageOptions & {
-      paths?: Array<keyof S>
-      serialize?: (store: Store) => string
-      deserialize?: (data: string) => Partial<S>
-    }
+    storage?: StorageOptions
   }
-
   export interface DefineSetupStoreOptions<Id, S, G, A> {
-    storage?: StorageOptions & {
-      paths?: Array<keyof S>
-      key?: Id extends string ? Id : string
-      getters?: Array<keyof G>
-      actions?: Array<keyof A>
-    }
+    storage?: StorageOptions
   }
 }
-
-//export { cookiesStorage }
+/* eslint-enable @typescript-eslint/no-unused-vars */
