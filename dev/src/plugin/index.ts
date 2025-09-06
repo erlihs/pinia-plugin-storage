@@ -17,6 +17,28 @@ const debounce = <T extends unknown[]>(fn: (...args: T) => void | Promise<void>,
   }
 }
 
+// Simple deep equality check for primitive values and objects
+const deepEqual = (a: unknown, b: unknown): boolean => {
+  if (a === b) return true
+  if (a == null || b == null) return a === b
+  if (typeof a !== typeof b) return false
+  if (typeof a !== 'object') return false
+  
+  const aObj = a as Record<string, unknown>
+  const bObj = b as Record<string, unknown>
+  const aKeys = Object.keys(aObj)
+  const bKeys = Object.keys(bObj)
+  
+  if (aKeys.length !== bKeys.length) return false
+  
+  for (const key of aKeys) {
+    if (!bKeys.includes(key)) return false
+    if (!deepEqual(aObj[key], bObj[key])) return false
+  }
+  
+  return true
+}
+
 const resolveState = (
   state: Store['$state'],
   include?: string[] | string,
@@ -273,23 +295,91 @@ export const createPiniaPluginStorage = ({
     bucketPlans.forEach((plan) => bucketExecutors.get(plan)?.(plan))
   })
 
-  // External subscription (cross-tab / channel updates)
-  for (const plan of bucketPlans) {
-    if (typeof plan.adapter.subscribe === 'function') {
-      plan.adapter.subscribe(store.$id, async () => {
-        try {
-          const latest = await plan.adapter.getItem(store.$id)
-          if (!latest) return
-          const parsed = safeParse<PartialState>(latest, (e) =>
-            onError?.(e, createErrorContext('sync', 'parse', store.$id, plan.bucket.adapter, store.$id))
-          )
-          if (parsed && typeof parsed === 'object') {
-            skipNextPersist = true
-            store.$patch(parsed)
+  // Unified External Synchronization
+  // Collect all subscription-enabled adapters and manage them centrally
+  const subscribablePlans = bucketPlans.filter(plan => typeof plan.adapter.subscribe === 'function')
+  
+  if (subscribablePlans.length > 0) {
+    // Debounce external sync to handle rapid changes from multiple sources
+    const syncDebounceMs = 50 // Short delay to collect multiple rapid changes
+    let syncTimeoutId: ReturnType<typeof setTimeout> | null = null
+    const pendingSyncSources = new Set<string>()
+
+    const performUnifiedSync = async () => {
+      if (isHydrating) return // Don't sync during hydration
+      
+      const syncSources = Array.from(pendingSyncSources)
+      pendingSyncSources.clear()
+      
+      try {
+        // Collect external changes from all sources in parallel
+        const externalChanges = await Promise.allSettled(
+          syncSources.map(async (adapter) => {
+            const plan = subscribablePlans.find(p => p.bucket.adapter === adapter)
+            if (!plan) return null
+            
+            const latest = await plan.adapter.getItem(store.$id)
+            if (!latest) return null
+            
+            const parsed = safeParse<PartialState>(latest, (e) =>
+              onError?.(e, createErrorContext('sync', 'parse', store.$id, plan.bucket.adapter, store.$id))
+            )
+            
+            if (parsed && typeof parsed === 'object') {
+              // Apply bucket-level filtering to external data
+              const filteredExternal = resolveState(parsed, plan.bucket.include, plan.bucket.exclude)
+              return { plan, external: filteredExternal }
+            }
+            return null
+          })
+        )
+
+        // Merge external changes with current state intelligently
+        const currentState = store.$state
+        const mergedChanges: PartialState = {}
+        let hasChanges = false
+
+        for (const result of externalChanges) {
+          if (result.status === 'fulfilled' && result.value) {
+            const { plan, external } = result.value
+            
+            // Smart merge: only update keys that actually changed
+            for (const [key, externalValue] of Object.entries(external)) {
+              const currentValue = currentState[key]
+              
+              // Simple deep equality check for primitive values and objects
+              if (!deepEqual(currentValue, externalValue)) {
+                mergedChanges[key] = externalValue
+                hasChanges = true
+              }
+            }
           }
-        } catch (e) {
-          onError?.(e, createErrorContext('sync', 'read', store.$id, plan.bucket.adapter, store.$id))
         }
+
+        // Apply unified patch if there are actual changes
+        if (hasChanges) {
+          skipNextPersist = true
+          store.$patch(mergedChanges)
+        }
+      } catch (e) {
+        onError?.(e, createErrorContext('sync', 'channel', store.$id, 'unified', store.$id))
+      }
+    }
+
+    // Set up subscriptions for each subscribable adapter
+    for (const plan of subscribablePlans) {
+      plan.adapter.subscribe!(store.$id, () => {
+        // Mark this adapter as having pending changes
+        pendingSyncSources.add(plan.bucket.adapter)
+        
+        // Debounce to collect multiple rapid changes
+        if (syncTimeoutId) {
+          clearTimeout(syncTimeoutId)
+        }
+        syncTimeoutId = setTimeout(() => {
+          void performUnifiedSync()
+          syncTimeoutId = null
+        }, syncDebounceMs)
       })
     }
   }

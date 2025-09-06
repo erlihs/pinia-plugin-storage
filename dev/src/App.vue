@@ -5,12 +5,14 @@ import {
   useCounterStoreAdvanced,
   useCounterStoreSession,
   useCounterStoreIndexedDB,
+  useCounterStoreCrossTab,
 } from './stores/counter'
 const counterStore = useCounterStore()
 const counterStoreDefault = useCounterStoreDefault()
 const counterStoreAdvanced = useCounterStoreAdvanced()
 const counterStoreSession = useCounterStoreSession()
 const counterStoreIndexedDB = useCounterStoreIndexedDB()
+const counterStoreCrossTab = useCounterStoreCrossTab()
 </script>
 
 <template>
@@ -64,6 +66,43 @@ const counterStoreIndexedDB = useCounterStoreIndexedDB()
         <td>{{ counterStoreIndexedDB.count }}</td>
         <td>{{ counterStoreIndexedDB.extCount }}</td>
         <td>Values should persist after page reload</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Cross-Tab Sync Demo</h2>
+  <p>Open this page in multiple tabs to see real-time synchronization!</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Property</th>
+        <th>Action</th>
+        <th>Value</th>
+        <th>Storage</th>
+        <th>Expected behavior</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Count</td>
+        <td><button @click="counterStoreCrossTab.increment()">+</button></td>
+        <td>{{ counterStoreCrossTab.count }}</td>
+        <td>localStorage</td>
+        <td>Syncs across tabs instantly</td>
+      </tr>
+      <tr>
+        <td>User Name</td>
+        <td><button @click="counterStoreCrossTab.updateName('User ' + Date.now())">Update Name</button></td>
+        <td>{{ counterStoreCrossTab.name }}</td>
+        <td>localStorage</td>
+        <td>Syncs across tabs instantly</td>
+      </tr>
+      <tr>
+        <td>Theme</td>
+        <td><button @click="counterStoreCrossTab.toggleTheme()">Toggle Theme</button></td>
+        <td>{{ counterStoreCrossTab.settings.theme }}</td>
+        <td>indexedDB</td>
+        <td>Syncs across tabs with BroadcastChannel</td>
       </tr>
     </tbody>
   </table>

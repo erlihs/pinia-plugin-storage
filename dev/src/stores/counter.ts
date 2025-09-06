@@ -142,3 +142,48 @@ export const useCounterStoreIndexedDB = defineStore(
     storage: 'indexedDB',
   },
 )
+
+// Demo store for testing cross-tab sync with multiple buckets
+export const useCounterStoreCrossTab = defineStore(
+  'counter-crosstab',
+  () => {
+    const count = ref(0)
+    const name = ref('Default User')
+    const settings = ref({
+      theme: 'light',
+      notifications: true,
+    })
+
+    function increment() {
+      count.value++
+    }
+
+    function updateName(newName: string) {
+      name.value = newName
+    }
+
+    function toggleTheme() {
+      settings.value.theme = settings.value.theme === 'light' ? 'dark' : 'light'
+    }
+
+    return { count, name, settings, increment, updateName, toggleTheme }
+  },
+  {
+    storage: {
+      buckets: [
+        {
+          adapter: 'localStorage',
+          include: ['count', 'name'], // Counter and name sync across tabs
+        },
+        {
+          adapter: 'indexedDB',
+          include: ['settings'], // Settings sync via IndexedDB
+          options: { dbName: 'app', storeName: 'userSettings' }
+        },
+      ],
+      onError: (error, ctx) => {
+        console.warn(`Cross-tab sync error in ${ctx.stage}/${ctx.operation}:`, error)
+      },
+    },
+  },
+)

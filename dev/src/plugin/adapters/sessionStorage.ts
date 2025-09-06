@@ -12,5 +12,7 @@ export const sessionStorageAdapter = (): StorageAdapter => {
     async removeItem(k) {
       if (hasWindow) window.sessionStorage.removeItem(k)
     },
+    // Note: sessionStorage doesn't support cross-tab sync by nature
+    // It's scoped to a single tab/window, so external sync is not applicable
   }
 }

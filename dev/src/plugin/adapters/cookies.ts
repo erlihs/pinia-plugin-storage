@@ -42,4 +42,6 @@ export const cookiesAdapter = (opts: CookieOptions = {}): StorageAdapter => ({
   async removeItem(k) {
     deleteCookie(k, opts.path ?? '/')
   },
+  // Note: Cookies don't have a built-in change event mechanism
+  // Cross-tab sync would require polling or server-side coordination
 })
