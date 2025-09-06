@@ -6,9 +6,13 @@ import type { Store } from 'pinia'
 
 type Adapters = 'cookies' | 'localStorage' | 'sessionStorage' | 'indexedDB'
 
-type BaseBucket = {
-  include?: string[] | string
-  exclude?: string[] | string
+// Enforce mutual exclusivity between include and exclude
+type IncludeOnly = { include: string[] | string; exclude?: never }
+type ExcludeOnly = { exclude: string[] | string; include?: never }
+type Neither = { include?: undefined; exclude?: undefined }
+type ExclusiveIncludeExclude = IncludeOnly | ExcludeOnly | Neither
+
+type BaseBucket = ExclusiveIncludeExclude & {
   beforeHydrate?: (oldState: UnwrapRef<Store>) => void
 }
 

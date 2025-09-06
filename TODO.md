@@ -53,10 +53,10 @@ This document captures the current assessment of `src/plugin` (Pinia persistence
 - [x] Centralize bucket resolution; create adapter instances once; cache in map keyed by bucket identity. (Implemented)
 - [x] Collect all bucket payloads first → merge → invoke `beforeHydrate` hook once → single `$patch` → defer first write until after hydration completes. (Implemented)
 - [x] Add safe parse (`try/catch`) with optional `onCorruptData` callback + auto-purge strategy (implemented basic safe parse + onError hook).
-- [ ] Enforce mutual exclusion of `include` & `exclude` at type level (`type ExclusiveIncludeExclude = { include: ...; exclude?: never } | { exclude: ...; include?: never } | {}`).
+- [x] Enforce mutual exclusion of `include` & `exclude` at type level (`ExclusiveIncludeExclude` union implemented).
 - [ ] Make `adapter` required in `Bucket`; provide top-level `defaultAdapter` fallback.
 - [ ] Rename or reposition `beforeHydrate` (true semantics) or add `beforePersist` if both needed.
-- [ ] SSR guard (`if (typeof window === 'undefined') return;`).
+- [x] SSR guard (`if (typeof window === 'undefined') return;`).
 
 ### Phase 2 (Synchronization & Lifecycle)
 - [x] Implement external subscription: use each adapter's `subscribe` to rehydrate changed keys (basic patch with loop suppression implemented).

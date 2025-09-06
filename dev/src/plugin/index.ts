@@ -51,7 +51,12 @@ const resolveBuckets = (options: StorageOptions | undefined): Bucket[] => {
   const defaultBucket: Bucket[] = [{ adapter: 'sessionStorage' }]
 
   if (!options) return defaultBucket
-  if (typeof options === 'string') return [{ adapter: options }]
+  if (typeof options === 'string') {
+    if (options === 'cookies') return [{ adapter: 'cookies' }]
+    if (options === 'indexedDB') return [{ adapter: 'indexedDB', options: { dbName: 'pinia', storeName: 'keyval' } }]
+    if (options === 'localStorage') return [{ adapter: 'localStorage' }]
+    if (options === 'sessionStorage') return [{ adapter: 'sessionStorage' }]
+  }
 
   if (typeof options === 'object') {
     if ('buckets' in options && Array.isArray(options.buckets)) {
@@ -106,6 +111,8 @@ export const createPiniaPluginStorage = async ({
   options,
   store,
 }: PiniaPluginContext): Promise<void> => {
+  // SSR guard: skip all persistence logic when window is not available
+  if (typeof window === 'undefined') return
   if (options.storage) {
     const buckets = resolveBuckets(options.storage)
     const bucketPlans: BucketPlan[] = buckets.map((b) => ({ bucket: b, adapter: resolveStorage(b) }))
