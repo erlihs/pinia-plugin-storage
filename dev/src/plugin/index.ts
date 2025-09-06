@@ -9,6 +9,18 @@ export type { Bucket, StorageOptions }
 type Store = PiniaPluginContext['store']
 type PartialState = Partial<Store['$state']>
 
+// Comprehensive SSR environment detection
+// Ensures the plugin is safe to use in SSR frameworks like Nuxt, Next.js, SvelteKit, etc.
+const isServerEnvironment = (): boolean => {
+  return (
+    typeof window === 'undefined' ||          // No window object (Node.js/SSR)
+    typeof document === 'undefined' ||        // No document object (workers/SSR)
+    typeof navigator === 'undefined' ||       // No navigator object (SSR)
+    !window.localStorage ||                   // localStorage not available
+    !window.sessionStorage                    // sessionStorage not available
+  )
+}
+
 const debounce = <T extends unknown[]>(fn: (...args: T) => void | Promise<void>, delay: number) => {
   let timeoutId: ReturnType<typeof setTimeout>
   return (...args: T) => {
@@ -145,6 +157,11 @@ const createErrorContext = (
 ) => ({ stage, operation, storeId, adapter, key })
 
 export const updateStorage = async (bucket: Bucket, store: Store, onError?: OnErrorFn) => {
+  // SSR guard for external updateStorage calls
+  if (isServerEnvironment()) {
+    return
+  }
+
   const storage = resolveStorage(bucket)
   const partialState = resolveState(store.$state, bucket.include, bucket.exclude)
   
@@ -159,8 +176,11 @@ export const createPiniaPluginStorage = ({
   options,
   store,
 }: PiniaPluginContext): void => {
-  // SSR guard: skip all persistence logic when window is not available
-  if (typeof window === 'undefined') return
+  // Comprehensive SSR guard: skip all persistence logic in server environments
+  if (isServerEnvironment()) {
+    return
+  }
+
   if (!options.storage) return
 
   const buckets = resolveBuckets(options.storage)

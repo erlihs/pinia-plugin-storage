@@ -4,10 +4,16 @@ export type IndexedDBOptions = { dbName: string; storeName: string; dbVersion?: 
 
 function openIDB({ dbName, storeName, dbVersion = 1 }: IndexedDBOptions): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    if (typeof indexedDB === 'undefined') {
-      reject(new Error('indexedDB is not available in this environment'))
+    // SSR/environment guards
+    if (
+      typeof window === 'undefined' ||
+      typeof indexedDB === 'undefined' ||
+      !indexedDB
+    ) {
+      reject(new Error('IndexedDB is not available in this environment'))
       return
     }
+
     const req = indexedDB.open(dbName, dbVersion)
     req.onupgradeneeded = () => {
       const db = req.result
@@ -35,6 +41,20 @@ async function idbTx<T>(
 }
 
 export const indexedDBAdapter = (options: IndexedDBOptions): StorageAdapter => {
+  // Early SSR guard - return no-op adapter if not in browser
+  if (
+    typeof window === 'undefined' ||
+    typeof indexedDB === 'undefined' ||
+    typeof BroadcastChannel === 'undefined'
+  ) {
+    return {
+      async getItem() { return undefined },
+      async setItem() { /* no-op */ },
+      async removeItem() { /* no-op */ },
+      subscribe() { return () => {} }
+    }
+  }
+
   const dbp = openIDB(options)
   const channel =
     typeof BroadcastChannel !== 'undefined'
