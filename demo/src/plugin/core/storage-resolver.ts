@@ -15,10 +15,12 @@ import { adapters } from '../adapters'
 export const resolveStorage = (bucket: Bucket, storeId: string): StorageAdapter => {
   if (bucket.adapter === 'cookies') return adapters[bucket.adapter](bucket.options)
   if (bucket.adapter === 'indexedDB')
-    return adapters[bucket.adapter](bucket.options || { 
-      dbName: `pinia-${storeId}`, 
-      storeName: bucket.key || 'store' 
-    })
+    return adapters[bucket.adapter](
+      bucket.options || {
+        dbName: `pinia-${storeId}`,
+        storeName: bucket.key || 'store',
+      },
+    )
   if (bucket.adapter === 'localStorage' || bucket.adapter === 'sessionStorage')
     return adapters[bucket.adapter]()
   return adapters['sessionStorage']()

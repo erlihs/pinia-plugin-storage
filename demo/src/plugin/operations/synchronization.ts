@@ -88,10 +88,10 @@ export const setupUnifiedSync = (
           if (!parsed || typeof parsed !== 'object') return []
 
           // Produce filtered slices per plan
-            return plans.map((p) => ({
-              plan: p,
-              external: resolveState(parsed, p.bucket.include, p.bucket.exclude),
-            }))
+          return plans.map((p) => ({
+            plan: p,
+            external: resolveState(parsed, p.bucket.include, p.bucket.exclude),
+          }))
         }),
       )
 
