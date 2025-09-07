@@ -36,21 +36,15 @@ export const persistPlan = async (
     return // No changes detected, skip write
   }
 
-  // Update tracking state before persistence attempt
-  bucketLastStates.set(plan, currentSerialized)
-
   // Generate namespaced storage key
   const storageKey = generateStorageKey(store.$id, plan.bucket, globalNamespace, globalVersion)
 
   try {
     await plan.adapter.setItem(storageKey, currentSerialized)
+    // Only update tracking state after successful persistence
+    bucketLastStates.set(plan, currentSerialized)
   } catch (e) {
-    // Rollback tracking state on persistence failure
-    if (lastSerialized !== undefined) {
-      bucketLastStates.set(plan, lastSerialized)
-    } else {
-      bucketLastStates.delete(plan)
-    }
+    // No rollback needed since we didn't update tracking yet
     onError?.(e, createErrorContext('persist', 'write', store.$id, plan.bucket.adapter, storageKey))
   }
 }

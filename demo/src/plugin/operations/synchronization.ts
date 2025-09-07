@@ -22,6 +22,7 @@ type PartialState = Partial<Store['$state']>
  * @param globalVersion - Optional global version
  * @param setSkipNextPersist - Function to set skipNextPersist flag
  * @param getIsHydrating - Function to get hydration state
+ * @returns Cleanup function to remove all subscriptions and clear timers
  */
 export const setupUnifiedSync = (
   store: Store,
@@ -31,13 +32,16 @@ export const setupUnifiedSync = (
   globalVersion?: string,
   setSkipNextPersist?: () => void,
   getIsHydrating?: () => boolean,
-): void => {
+): (() => void) => {
   // Collect all subscription-enabled adapters and manage them centrally
   const subscribablePlans = bucketPlans.filter(
     (plan) => typeof plan.adapter.subscribe === 'function',
   )
 
-  if (subscribablePlans.length === 0) return
+  if (subscribablePlans.length === 0) return () => {} // Return no-op cleanup function
+
+  // Track cleanup functions for proper disposal
+  const unsubscribeFunctions: (() => void)[] = []
 
   // Debounce external sync to handle rapid changes from multiple sources
   const syncDebounceMs = 50 // Short delay to collect multiple rapid changes
@@ -119,7 +123,7 @@ export const setupUnifiedSync = (
   for (const plan of subscribablePlans) {
     // Generate namespaced storage key for subscription
     const storageKey = generateStorageKey(store.$id, plan.bucket, globalNamespace, globalVersion)
-    plan.adapter.subscribe!(storageKey, () => {
+    const unsubscribe = plan.adapter.subscribe!(storageKey, () => {
       // Mark this adapter as having pending changes
       pendingSyncSources.add(plan.bucket.adapter)
 
@@ -132,5 +136,24 @@ export const setupUnifiedSync = (
         syncTimeoutId = null
       }, syncDebounceMs)
     })
+    
+    // Track unsubscribe function for cleanup
+    unsubscribeFunctions.push(unsubscribe)
+  }
+
+  // Return cleanup function
+  return () => {
+    // Clear any pending timeout
+    if (syncTimeoutId) {
+      clearTimeout(syncTimeoutId)
+      syncTimeoutId = null
+    }
+    
+    // Unsubscribe from all adapters
+    unsubscribeFunctions.forEach(unsubscribe => unsubscribe())
+    unsubscribeFunctions.length = 0
+    
+    // Clear pending sources
+    pendingSyncSources.clear()
   }
 }

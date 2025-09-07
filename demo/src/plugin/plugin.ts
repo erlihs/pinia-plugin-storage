@@ -107,6 +107,9 @@ export const createPiniaPluginStorage = ({ options, store }: PiniaPluginContext)
       ? options.storage.debounceDelayMs || 0
       : 0
 
+  // Create shared debounced functions for same delays to improve efficiency
+  const sharedDebouncedFunctions = new Map<number, () => void>()
+  
   // Build per-bucket debounced functions
   const bucketExecutors = new Map<BucketPlan, (p: BucketPlan) => void>()
   for (const plan of bucketPlans) {
@@ -127,16 +130,34 @@ export const createPiniaPluginStorage = ({ options, store }: PiniaPluginContext)
     
     const delay = plan.bucket.debounceDelayMs ?? debounceDelayMs ?? getAdapterDefaultDelay(plan.bucket.adapter)
     const immediate = !delay || delay <= 0
+    
     if (immediate) {
       // no debounce: call persist directly
       bucketExecutors.set(plan, () => {
         void persistPlan(plan, store, bucketLastStates, onError, globalNamespace, globalVersion)
       })
     } else {
-      const debounced = debounce((p: BucketPlan) => {
-        void persistPlan(p, store, bucketLastStates, onError, globalNamespace, globalVersion)
-      }, delay)
-      bucketExecutors.set(plan, debounced)
+      // Use shared debounced function for same delays
+      if (!sharedDebouncedFunctions.has(delay)) {
+        // Create a shared debounced function that will be used by multiple plans with same delay
+        const debouncedFn = debounce(() => {
+          // When called, persist all plans that are scheduled for this delay
+          const plansForThisDelay = bucketPlans.filter(p => {
+            const pDelay = p.bucket.debounceDelayMs ?? debounceDelayMs ?? getAdapterDefaultDelay(p.bucket.adapter)
+            return pDelay === delay
+          })
+          plansForThisDelay.forEach(p => {
+            void persistPlan(p, store, bucketLastStates, onError, globalNamespace, globalVersion)
+          })
+        }, delay)
+        sharedDebouncedFunctions.set(delay, debouncedFn)
+      }
+      
+      const sharedDebouncedFn = sharedDebouncedFunctions.get(delay)!
+      bucketExecutors.set(plan, () => {
+        // All plans with same delay will trigger the same debounced function
+        sharedDebouncedFn()
+      })
     }
   }
 
@@ -153,7 +174,7 @@ export const createPiniaPluginStorage = ({ options, store }: PiniaPluginContext)
   })
 
   // Set up unified external synchronization
-  setupUnifiedSync(
+  const cleanupSync = setupUnifiedSync(
     store,
     bucketPlans,
     onError,
@@ -164,4 +185,17 @@ export const createPiniaPluginStorage = ({ options, store }: PiniaPluginContext)
     },
     () => isHydrating,
   )
+
+  // Store cleanup function for proper disposal
+  // Note: Pinia doesn't have a built-in disposal mechanism for plugins,
+  // but we can attach the cleanup to the store instance for manual cleanup if needed
+  if (store && typeof store === 'object') {
+    // Use Object.defineProperty to add cleanup function without TypeScript errors
+    Object.defineProperty(store, '_piniaStorageCleanup', {
+      value: cleanupSync,
+      enumerable: false,
+      writable: true,
+      configurable: true,
+    })
+  }
 }
