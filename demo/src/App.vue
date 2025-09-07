@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useCounterStoreNone } from './stores/counter-none'
 import { useCounterStoreBasic } from './stores/counter-basic'
-import {  useCounterStoreAdvanced } from './stores/counter-advanced'
+import { useCounterStoreAdvanced } from './stores/counter-advanced'
 
 const counterStoreNone = useCounterStoreNone()
 const counterStoreBasic = useCounterStoreBasic()
@@ -117,9 +117,12 @@ const reloadPage = () => {
 
   <h3>Cross-tab broadcasting</h3>
   <p>
-    Cross-tab broadcasting enables real-time synchronization of state changes across multiple browser tabs. <br />
-    This is automatically available for <strong>localStorage</strong> (via storage events) and <strong>indexedDB</strong> (via BroadcastChannel API). <br />
-    When you change a value in one tab, it instantly updates in all other tabs without requiring manual refresh. <br />
+    Cross-tab broadcasting enables real-time synchronization of state changes across multiple
+    browser tabs. <br />
+    This is automatically available for <strong>localStorage</strong> (via storage events) and
+    <strong>indexedDB</strong> (via BroadcastChannel API). <br />
+    When you change a value in one tab, it instantly updates in all other tabs without requiring
+    manual refresh. <br />
   </p>
 </template>
 
@@ -176,5 +179,4 @@ td {
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
-
 </style>

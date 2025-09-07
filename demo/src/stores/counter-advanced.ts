@@ -1,11 +1,9 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import 'pinia-plugin-storage'
 
 export const useCounterStoreAdvanced = defineStore(
   'counter-advanced',
   () => {
-
     // Session Storage counter
     const countS = ref(0)
     const extCountS = ref({
@@ -58,11 +56,19 @@ export const useCounterStoreAdvanced = defineStore(
       extCountI.value.hex = '0x' + countI.value.toString(16)
     }
 
-    return { 
-      countS, extCountS, incrementS,
-      countL, extCountL, incrementL,
-      countC, extCountC, incrementC,
-      countI, extCountI, incrementI
+    return {
+      countS,
+      extCountS,
+      incrementS,
+      countL,
+      extCountL,
+      incrementL,
+      countC,
+      extCountC,
+      incrementC,
+      countI,
+      extCountI,
+      incrementI,
     }
   },
   {
@@ -139,7 +145,7 @@ export const useCounterStoreAdvanced = defineStore(
           `🚨 Storage error in ${ctx.stage}/${ctx.operation} for ${ctx.storeId} (${ctx.adapter}):`,
           error,
         )
-        
+
         // Different error handling strategies per adapter
         switch (ctx.adapter) {
           case 'cookies':
@@ -163,17 +169,16 @@ export const useCounterStoreAdvanced = defineStore(
             }
             break
         }
-        
+
         // In production, you might want to send this to your error tracking service
-        // errorTracker.captureException(error, { 
-        //   extra: { 
+        // errorTracker.captureException(error, {
+        //   extra: {
         //     ...ctx,
         //     userAgent: navigator.userAgent,
         //     timestamp: new Date().toISOString()
-        //   } 
+        //   }
         // })
       },
     },
   },
 )
-

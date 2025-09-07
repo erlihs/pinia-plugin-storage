@@ -1,6 +1,5 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import 'pinia-plugin-storage'
 
 export const useCounterStoreBasic = defineStore(
   'counter-basic',
