@@ -6,6 +6,26 @@ export type CookieOptions = {
   secure?: boolean
   sameSite?: 'Lax' | 'Strict' | 'None'
   maxAgeSeconds?: number
+  expires?: Date | string | number
+  httpOnly?: boolean
+  priority?: 'Low' | 'Medium' | 'High'
+  partitioned?: boolean
+}
+
+function formatExpires(expires: Date | string | number): string {
+  if (expires instanceof Date) {
+    return expires.toUTCString()
+  }
+  if (typeof expires === 'string') {
+    return new Date(expires).toUTCString()
+  }
+  if (typeof expires === 'number') {
+    // Treat number as days from now
+    const date = new Date()
+    date.setDate(date.getDate() + expires)
+    return date.toUTCString()
+  }
+  return ''
 }
 
 function readCookie(name: string): string | undefined {
@@ -27,8 +47,12 @@ function writeCookie(name: string, value: string, opts: CookieOptions = {}) {
       `path=${opts.path ?? '/'}`,
       opts.domain ? `domain=${opts.domain}` : '',
       opts.secure ? 'Secure' : '',
+      opts.httpOnly ? 'HttpOnly' : '',
       `SameSite=${opts.sameSite ?? 'Lax'}`,
       typeof opts.maxAgeSeconds === 'number' ? `Max-Age=${opts.maxAgeSeconds}` : '',
+      opts.expires ? `Expires=${formatExpires(opts.expires)}` : '',
+      opts.priority ? `Priority=${opts.priority}` : '',
+      opts.partitioned ? 'Partitioned' : '',
     ].filter(Boolean)
     document.cookie = parts.join('; ')
   } catch {
