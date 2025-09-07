@@ -24,17 +24,17 @@ export interface ErrorContext {
 }
 
 // Enforce mutual exclusivity between include and exclude
-type IncludeOnly = { 
+type IncludeOnly = {
   include: string[] | string
-  exclude?: never 
+  exclude?: never
 }
-type ExcludeOnly = { 
+type ExcludeOnly = {
   exclude: string[] | string
-  include?: never 
+  include?: never
 }
-type Neither = { 
+type Neither = {
   include?: undefined
-  exclude?: undefined 
+  exclude?: undefined
 }
 type ExclusiveIncludeExclude = IncludeOnly | ExcludeOnly | Neither
 
@@ -44,7 +44,7 @@ type ExclusiveIncludeExclude = IncludeOnly | ExcludeOnly | Neither
 type BaseBucket = ExclusiveIncludeExclude & {
   /** Storage key for this bucket (enables namespacing and prevents collisions) */
   key?: string
-  /** 
+  /**
    * Allows transforming the persisted slice before it's merged into the store.
    * Return value (if object) replaces the slice; otherwise in-place mutation is honored.
    */

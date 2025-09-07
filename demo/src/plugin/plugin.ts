@@ -63,7 +63,10 @@ export const createPiniaPluginStorage = ({ options, store }: PiniaPluginContext)
   if (!options.storage) return
 
   const buckets = resolveBuckets(options.storage)
-  const bucketPlans: BucketPlan[] = buckets.map((b) => ({ bucket: b, adapter: resolveStorage(b, store.$id) }))
+  const bucketPlans: BucketPlan[] = buckets.map((b) => ({
+    bucket: b,
+    adapter: resolveStorage(b, store.$id),
+  }))
   const onError = resolveOnError(options.storage)
 
   // Extract namespacing configuration
