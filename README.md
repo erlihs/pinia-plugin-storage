@@ -1,6 +1,6 @@
 ![pinia-plugin-storage](./pinia-plugin-storage.png)
 
-# pinia-plugin-storage
+# @erlihs/pinia-plugin-storage
 
 🍍 A comprehensive state persistence and synchronization, yet as simple as it can be
 
@@ -32,7 +32,7 @@ Main Features:
 
 ```sh
 # or pnpm or yarn
-npm install pinia-plugin-storage
+npm install @erlihs/pinia-plugin-storage
 ```
 
 ### Usage (Basic)
@@ -42,7 +42,7 @@ npm install pinia-plugin-storage
 ```ts
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { createPiniaPluginStorage } from 'pinia-plugin-storage'
+import { createPiniaPluginStorage } from '@erlihs/pinia-plugin-storage'
 
 import App from './App.vue'
 

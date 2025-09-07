@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2025-09-07
 
 ### Added
-- Initial release of pinia-plugin-storage
+- Initial release of @erlihs/pinia-plugin-storage
 - Multi-adapter support for localStorage, sessionStorage, cookies, and indexedDB
 - Selective persistence with include/exclude options
 - Multiple buckets system for different storage adapters

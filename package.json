@@ -1,5 +1,5 @@
 {
-  "name": "pinia-plugin-storage",
+  "name": "@erlihs/pinia-plugin-storage",
   "version": "1.0.0",
   "description": "A Pinia plugin for state persistence with multiple storage adapters",
   "main": "dist/index.js",
