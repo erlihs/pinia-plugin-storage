@@ -40,76 +40,82 @@ export const setupUnifiedSync = (
 
   if (subscribablePlans.length === 0) return () => {} // Return no-op cleanup function
 
+  // Pre-compute storage keys and group plans by key (normally 1:1 but defensive)
+  const plansByStorageKey = new Map<string, BucketPlan[]>()
+  const storageKeyOfPlan = new Map<BucketPlan, string>()
+  for (const plan of subscribablePlans) {
+    const key = generateStorageKey(store.$id, plan.bucket, globalNamespace, globalVersion)
+    storageKeyOfPlan.set(plan, key)
+    const arr = plansByStorageKey.get(key)
+    if (arr) arr.push(plan)
+    else plansByStorageKey.set(key, [plan])
+  }
+
   // Track cleanup functions for proper disposal
   const unsubscribeFunctions: (() => void)[] = []
 
   // Debounce external sync to handle rapid changes from multiple sources
   const syncDebounceMs = 50 // Short delay to collect multiple rapid changes
   let syncTimeoutId: ReturnType<typeof setTimeout> | null = null
-  const pendingSyncSources = new Set<string>()
+  const pendingStorageKeys = new Set<string>()
 
   const performUnifiedSync = async () => {
     if (getIsHydrating?.()) return // Don't sync during hydration
 
-    const syncSources = Array.from(pendingSyncSources)
-    pendingSyncSources.clear()
+    const keysToSync = Array.from(pendingStorageKeys)
+    pendingStorageKeys.clear()
 
     try {
-      // Collect external changes from all sources in parallel
-      const externalChanges = await Promise.allSettled(
-        syncSources.map(async (adapter) => {
-          const plan = subscribablePlans.find((p) => p.bucket.adapter === adapter)
-          if (!plan) return null
+      // Fetch and parse external data for each changed storage key concurrently
+      const externalResults = await Promise.allSettled(
+        keysToSync.map(async (storageKey) => {
+          const plans = plansByStorageKey.get(storageKey)
+          if (!plans || plans.length === 0) return []
+          const primaryPlan = plans[0]
+          const latest = await primaryPlan.adapter.getItem(storageKey)
+          if (!latest) return []
 
-          // Generate namespaced storage key
-          const storageKey = generateStorageKey(
-            store.$id,
-            plan.bucket,
-            globalNamespace,
-            globalVersion,
-          )
-          const latest = await plan.adapter.getItem(storageKey)
-          if (!latest) return null
+          const parsed = safeParse<PartialState>(latest, (e) => {
+            // Emit parse error for each plan sharing the key
+            plans.forEach((p) =>
+              onError?.(
+                e,
+                createErrorContext('sync', 'parse', store.$id, p.bucket.adapter, storageKey),
+              ),
+            )
+          })
 
-          const parsed = safeParse<PartialState>(latest, (e) =>
-            onError?.(
-              e,
-              createErrorContext('sync', 'parse', store.$id, plan.bucket.adapter, storageKey),
-            ),
-          )
+          if (!parsed || typeof parsed !== 'object') return []
 
-          if (parsed && typeof parsed === 'object') {
-            // Apply bucket-level filtering to external data
-            const filteredExternal = resolveState(parsed, plan.bucket.include, plan.bucket.exclude)
-            return { plan, external: filteredExternal }
-          }
-          return null
+          // Produce filtered slices per plan
+            return plans.map((p) => ({
+              plan: p,
+              external: resolveState(parsed, p.bucket.include, p.bucket.exclude),
+            }))
         }),
       )
 
-      // Merge external changes with current state intelligently
+      // Flatten successful results
+      const flattened: { plan: BucketPlan; external: PartialState }[] = []
+      for (const res of externalResults) {
+        if (res.status === 'fulfilled' && Array.isArray(res.value)) {
+          for (const item of res.value) flattened.push(item)
+        }
+      }
+
+      // Merge external changes intelligently
       const currentState = store.$state
       const mergedChanges: PartialState = {}
       let hasChanges = false
-
-      for (const result of externalChanges) {
-        if (result.status === 'fulfilled' && result.value) {
-          const { external } = result.value
-
-          // Smart merge: only update keys that actually changed
-          for (const [key, externalValue] of Object.entries(external)) {
-            const currentValue = currentState[key]
-
-            // Simple deep equality check for primitive values and objects
-            if (!deepEqual(currentValue, externalValue)) {
-              mergedChanges[key] = externalValue
-              hasChanges = true
-            }
+      for (const { external } of flattened) {
+        for (const [k, v] of Object.entries(external)) {
+          if (!deepEqual(currentState[k], v)) {
+            mergedChanges[k] = v
+            hasChanges = true
           }
         }
       }
 
-      // Apply unified patch if there are actual changes
       if (hasChanges) {
         setSkipNextPersist?.()
         store.$patch(mergedChanges)
@@ -119,41 +125,27 @@ export const setupUnifiedSync = (
     }
   }
 
-  // Set up subscriptions for each subscribable adapter
+  // Set up subscriptions for each subscribable plan
   for (const plan of subscribablePlans) {
-    // Generate namespaced storage key for subscription
-    const storageKey = generateStorageKey(store.$id, plan.bucket, globalNamespace, globalVersion)
+    const storageKey = storageKeyOfPlan.get(plan)!
     const unsubscribe = plan.adapter.subscribe!(storageKey, () => {
-      // Mark this adapter as having pending changes
-      pendingSyncSources.add(plan.bucket.adapter)
-
-      // Debounce to collect multiple rapid changes
-      if (syncTimeoutId) {
-        clearTimeout(syncTimeoutId)
-      }
+      pendingStorageKeys.add(storageKey)
+      if (syncTimeoutId) clearTimeout(syncTimeoutId)
       syncTimeoutId = setTimeout(() => {
         void performUnifiedSync()
         syncTimeoutId = null
       }, syncDebounceMs)
     })
-    
-    // Track unsubscribe function for cleanup
     unsubscribeFunctions.push(unsubscribe)
   }
 
-  // Return cleanup function
   return () => {
-    // Clear any pending timeout
     if (syncTimeoutId) {
       clearTimeout(syncTimeoutId)
       syncTimeoutId = null
     }
-    
-    // Unsubscribe from all adapters
-    unsubscribeFunctions.forEach(unsubscribe => unsubscribe())
+    unsubscribeFunctions.forEach((u) => u())
     unsubscribeFunctions.length = 0
-    
-    // Clear pending sources
-    pendingSyncSources.clear()
+    pendingStorageKeys.clear()
   }
 }
