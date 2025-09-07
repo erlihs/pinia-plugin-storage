@@ -31,6 +31,7 @@ jobs:
   publish-npm:
     needs: test
     runs-on: ubuntu-latest
+    if: false  # Disable automatic publishing - manually published
 
     steps:
     - name: Checkout code
@@ -50,12 +51,12 @@ jobs:
       run: npm run build
 
     - name: Publish to npm
-      run: npm publish
+      run: npm publish --access public
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   create-release:
-    needs: [test, publish-npm]
+    needs: [test]  # Removed publish-npm dependency since it's disabled
     runs-on: ubuntu-latest
 
     steps:
