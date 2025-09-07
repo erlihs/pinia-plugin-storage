@@ -107,11 +107,11 @@ const reloadPage = () => window.location.reload()
 
 ### Usage (Advanced)
 
-//todo
+Check the full [documentation](./docs/README.md)
 
 ## Contributing
 
-//todo
+Contributions are welcomed! Please read our [Contributing Guide](./CONTRIBUTING.md) for details on how to get started.
 
 ## Credits
 
