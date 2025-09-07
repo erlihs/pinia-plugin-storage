@@ -1,8 +1,10 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { createPiniaPluginStorage } from './plugin'
+import { createPiniaPluginStorage, PLUGIN_VERSION } from 'pinia-plugin-storage'
 
 import App from './App.vue'
+
+console.log('Using Pinia Plugin Storage version:', PLUGIN_VERSION)
 
 const app = createApp(App)
 

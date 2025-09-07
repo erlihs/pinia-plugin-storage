@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import '@/plugin/types'
+import 'pinia-plugin-storage/types'
 
 export const useCounterStore = defineStore('counter', () => {
   const count = ref(0)
