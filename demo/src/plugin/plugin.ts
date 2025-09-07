@@ -110,7 +110,22 @@ export const createPiniaPluginStorage = ({ options, store }: PiniaPluginContext)
   // Build per-bucket debounced functions
   const bucketExecutors = new Map<BucketPlan, (p: BucketPlan) => void>()
   for (const plan of bucketPlans) {
-    const delay = plan.bucket.debounceDelayMs ?? debounceDelayMs
+    // Get adapter-specific default delay if no bucket-specific or global delay is set
+    const getAdapterDefaultDelay = (adapter: string): number => {
+      switch (adapter) {
+        case 'cookies':
+        case 'sessionStorage':
+          return 0
+        case 'localStorage':
+          return 100
+        case 'indexedDB':
+          return 250
+        default:
+          return 0
+      }
+    }
+    
+    const delay = plan.bucket.debounceDelayMs ?? debounceDelayMs ?? getAdapterDefaultDelay(plan.bucket.adapter)
     const immediate = !delay || delay <= 0
     if (immediate) {
       // no debounce: call persist directly
