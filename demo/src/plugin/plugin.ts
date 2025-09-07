@@ -34,7 +34,7 @@ export const updateStorage = async (bucket: Bucket, store: Store, onError?: OnEr
     return
   }
 
-  const storage = resolveStorage(bucket)
+  const storage = resolveStorage(bucket, store.$id)
   const partialState = resolveState(store.$state, bucket.include, bucket.exclude)
 
   try {
@@ -63,7 +63,7 @@ export const createPiniaPluginStorage = ({ options, store }: PiniaPluginContext)
   if (!options.storage) return
 
   const buckets = resolveBuckets(options.storage)
-  const bucketPlans: BucketPlan[] = buckets.map((b) => ({ bucket: b, adapter: resolveStorage(b) }))
+  const bucketPlans: BucketPlan[] = buckets.map((b) => ({ bucket: b, adapter: resolveStorage(b, store.$id) }))
   const onError = resolveOnError(options.storage)
 
   // Extract namespacing configuration
