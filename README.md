@@ -109,6 +109,10 @@ const reloadPage = () => window.location.reload()
 
 Check the full [documentation](./docs/README.md)
 
+or 
+
+Jump into [demo](./demo) app and check out `@/stores` and `@/App.vue` for hands-on examples.
+
 ## Contributing
 
 Contributions are welcomed! Please read our [Contributing Guide](./CONTRIBUTING.md) for details on how to get started.

@@ -29,7 +29,10 @@
     "type-check": "tsc --noEmit",
     "clean": "rimraf dist",
     "dev:demo": "npm run build && cd demo && npm install && npm run dev",
-    "test:demo": "npm run build && cd demo && npm install && npm run type-check"
+    "test:demo": "npm run build && cd demo && npm install && npm run type-check",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "keywords": [
     "pinia",
@@ -50,11 +53,15 @@
     "vue": "^3.0.0"
   },
   "devDependencies": {
+    "@types/jsdom": "^21.1.7",
     "@types/node": "^22.16.5",
+    "@vitest/coverage-v8": "^3.2.4",
+    "jsdom": "^26.1.0",
     "pinia": "^3.0.3",
     "rimraf": "^6.0.1",
     "tsup": "^8.3.5",
     "typescript": "~5.8.0",
+    "vitest": "^3.2.4",
     "vue": "^3.5.18"
   },
   "engines": {

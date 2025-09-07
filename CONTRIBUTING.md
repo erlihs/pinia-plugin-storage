@@ -125,8 +125,10 @@ Before submitting:
 1. **Build successfully**: `npm run build`
 2. **Type check passes**: `npm run type-check`
 3. **Demo works**: `npm run dev:demo`
-4. **Test your changes** with different storage adapters
-5. **Test in different browsers** if applicable
+4. **Run tests**: `npm run test` or `npm run test:run` (for CI/non-watch mode)
+5. **Check test coverage**: `npm run test:coverage` (optional but recommended)
+6. **Test your changes** with different storage adapters
+7. **Test in different browsers** if applicable
 
 ## Pull Request Process
 
