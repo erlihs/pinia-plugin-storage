@@ -97,7 +97,5 @@ The demo uses a local file dependency (`"pinia-plugin-storage": "file:../"`), wh
 
 ## Notes
 
-- The plugin source is now in `/src` instead of `/demo/src/plugin`
 - Demo imports from `pinia-plugin-storage` package instead of relative paths
-- All TypeScript types are properly exported and available to the demo
 - The build outputs both ESM and CommonJS formats for maximum compatibility

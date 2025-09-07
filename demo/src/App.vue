@@ -1,19 +1,11 @@
 <script setup lang="ts">
 import { useCounterStoreNone } from './stores/counter-none'
-import {
-  useCounterStoreDefault,
-  useCounterStoreAdvanced,
-  useCounterStoreSession,
-  useCounterStoreIndexedDB,
-  useCounterStoreCrossTab,
-} from './stores/counter'
+import { useCounterStoreBasic } from './stores/counter-basic'
+import {  useCounterStoreAdvanced } from './stores/counter-advanced'
 
 const counterStoreNone = useCounterStoreNone()
-const counterStoreDefault = useCounterStoreDefault()
+const counterStoreBasic = useCounterStoreBasic()
 const counterStoreAdvanced = useCounterStoreAdvanced()
-const counterStoreSession = useCounterStoreSession()
-const counterStoreIndexedDB = useCounterStoreIndexedDB()
-const counterStoreCrossTab = useCounterStoreCrossTab()
 
 const reloadPage = () => {
   window.location.reload()
@@ -23,7 +15,7 @@ const reloadPage = () => {
 <template>
   <h1>Pinia Plugin Storage</h1>
 
-  <h2>None</h2>
+  <h2>Basic</h2>
 
   <table>
     <thead>
@@ -44,6 +36,17 @@ const reloadPage = () => {
         <td>{{ counterStoreNone.count }}&nbsp;&nbsp;{{ counterStoreNone.extCount }}</td>
         <td>Values should not persist after page reload</td>
       </tr>
+      <tr>
+        <td>localStorage</td>
+        <td>
+          <button @click="counterStoreBasic.increment(-1)">-</button>
+          <button @click="counterStoreBasic.increment(1)">+</button>
+        </td>
+        <td>{{ counterStoreBasic.count }}&nbsp;&nbsp;{{ counterStoreBasic.extCount }}</td>
+        <td>
+          Values should persist after page reload and value should be seen in browser's localStorage
+        </td>
+      </tr>
     </tbody>
     <tfoot>
       <tr>
@@ -54,92 +57,70 @@ const reloadPage = () => {
     </tfoot>
   </table>
 
-  <h2>Source</h2>
-  <p>//todo</p>
-  <h2>Tests</h2>
+  <h2>Advanced</h2>
 
   <table>
     <thead>
       <tr>
-        <th>Storage type</th>
-        <th>Action</th>
-        <th>Simple value</th>
-        <th>Object</th>
-        <th>Expected behaviors</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>localStorage</td>
-        <td><button @click="counterStoreDefault.increment()">+</button></td>
-        <td>{{ counterStoreDefault.count }}</td>
-        <td>{{ counterStoreDefault.extCount }}</td>
-        <td>Values should persist after page reload</td>
-      </tr>
-      <tr>
-        <td>advancedStorage</td>
-        <td><button @click="counterStoreAdvanced.increment()">+</button></td>
-        <td>{{ counterStoreAdvanced.count }}</td>
-        <td>{{ counterStoreAdvanced.extCount }}</td>
-        <td>Values should persist after page reload</td>
-      </tr>
-      <tr>
-        <td>sessionStorage</td>
-        <td><button @click="counterStoreSession.increment()">+</button></td>
-        <td>{{ counterStoreSession.count }}</td>
-        <td>{{ counterStoreSession.extCount }}</td>
-        <td>Values should persist after page reload</td>
-      </tr>
-      <tr>
-        <td>indexedDB</td>
-        <td><button @click="counterStoreIndexedDB.increment()">+</button></td>
-        <td>{{ counterStoreIndexedDB.count }}</td>
-        <td>{{ counterStoreIndexedDB.extCount }}</td>
-        <td>Values should persist after page reload</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <h2>Cross-Tab Sync Demo</h2>
-  <p>Open this page in multiple tabs to see real-time synchronization!</p>
-  <table>
-    <thead>
-      <tr>
-        <th>Property</th>
+        <th>storageType</th>
         <th>Action</th>
         <th>Value</th>
-        <th>Storage</th>
         <th>Expected behavior</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td>Count</td>
-        <td><button @click="counterStoreCrossTab.increment()">+</button></td>
-        <td>{{ counterStoreCrossTab.count }}</td>
-        <td>localStorage</td>
-        <td>Syncs across tabs instantly</td>
-      </tr>
-      <tr>
-        <td>User Name</td>
+        <td>sessionStorage</td>
         <td>
-          <button @click="counterStoreCrossTab.updateName('User ' + Date.now())">
-            Update Name
-          </button>
+          <button @click="counterStoreAdvanced.incrementS(-1)">-</button>
+          <button @click="counterStoreAdvanced.incrementS(1)">+</button>
         </td>
-        <td>{{ counterStoreCrossTab.name }}</td>
-        <td>localStorage</td>
-        <td>Syncs across tabs instantly</td>
+        <td>{{ counterStoreAdvanced.countS }}&nbsp;&nbsp;{{ counterStoreAdvanced.extCountS }}</td>
+        <td>Values persist during session but reset after browser restart. Debounce: 50ms</td>
       </tr>
       <tr>
-        <td>Theme</td>
-        <td><button @click="counterStoreCrossTab.toggleTheme()">Toggle Theme</button></td>
-        <td>{{ counterStoreCrossTab.settings.theme }}</td>
+        <td>localStorage</td>
+        <td>
+          <button @click="counterStoreAdvanced.incrementL(-1)">-</button>
+          <button @click="counterStoreAdvanced.incrementL(1)">+</button>
+        </td>
+        <td>{{ counterStoreAdvanced.countL }}&nbsp;&nbsp;{{ counterStoreAdvanced.extCountL }}</td>
+        <td>Values persist across sessions and browser restarts. Debounce: 200ms</td>
+      </tr>
+      <tr>
+        <td>cookies</td>
+        <td>
+          <button @click="counterStoreAdvanced.incrementC(-1)">-</button>
+          <button @click="counterStoreAdvanced.incrementC(1)">+</button>
+        </td>
+        <td>{{ counterStoreAdvanced.countC }}&nbsp;&nbsp;{{ counterStoreAdvanced.extCountC }}</td>
+        <td>Values stored in cookies with 30s expiry. Check browser dev tools. Debounce: 300ms</td>
+      </tr>
+      <tr>
         <td>indexedDB</td>
-        <td>Syncs across tabs with BroadcastChannel</td>
+        <td>
+          <button @click="counterStoreAdvanced.incrementI(-1)">-</button>
+          <button @click="counterStoreAdvanced.incrementI(1)">+</button>
+        </td>
+        <td>{{ counterStoreAdvanced.countI }}&nbsp;&nbsp;{{ counterStoreAdvanced.extCountI }}</td>
+        <td>Values stored in IndexedDB for complex data and large storage. Debounce: 150ms</td>
       </tr>
     </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="4" style="text-align: right">
+          <button @click="reloadPage">🔄 Reload Page</button>
+        </td>
+      </tr>
+    </tfoot>
   </table>
+
+  <h3>Cross-tab broadcasting</h3>
+  <p>
+    Cross-tab broadcasting enables real-time synchronization of state changes across multiple browser tabs. <br />
+    This is automatically available for <strong>localStorage</strong> (via storage events) and <strong>indexedDB</strong> (via BroadcastChannel API). <br />
+    When you change a value in one tab, it instantly updates in all other tabs without requiring manual refresh. <br />
+  </p>
 </template>
 
 <style scoped>
@@ -192,5 +173,8 @@ th,
 td {
   border: 1px solid #ddd;
   padding: 8px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
+
 </style>
