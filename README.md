@@ -1,8 +1,30 @@
+![pinia-plugin-storage](./pinia-plugin-storage.png)
+
 # pinia-plugin-storage
 
-🍍 Persist and rehydrate Pinia state
+🍍 A comprehensive state persistence and synchronization, yet as simple as it can be
 
-//todo
+Main Features:
+
+- **Multi-Adapter Support**: localStorage, sessionStorage, cookies, and indexedDB
+
+- **Selective Persistence**: Include/exclude specific state properties
+
+- **Multiple Buckets**: Different parts of state can use different storage adapters
+
+- **Automatic Hydration**: Restores state from storage on app initialization
+
+- **Real-time Synchronization**: Syncs state changes across browser tabs/windows
+
+- **Debounced Persistence**: Configurable debouncing to optimize write performance
+
+- **Namespace & Versioning**: Prevents storage key collisions and supports data migration
+
+- **State Transformation**: Before/after hooks for data transformation during hydration
+
+- **SSR Safe**: Server-side rendering compatible with environment detection
+
+- **Error Handling**: Comprehensive error handling with custom error callbacks
 
 ## Getting started
 
