@@ -10,7 +10,7 @@ const createMockAdapter = (getData: any = null) => ({
   getItem: vi.fn().mockResolvedValue(getData ? JSON.stringify(getData) : null),
   setItem: vi.fn().mockResolvedValue(undefined),
   removeItem: vi.fn().mockResolvedValue(undefined),
-  subscribe: vi.fn(() => () => {})
+  subscribe: vi.fn(() => () => {}),
 })
 
 describe('Operations', () => {
@@ -32,11 +32,13 @@ describe('Operations', () => {
 
       const store = useTestStore()
       const mockAdapter = createMockAdapter({ count: 5, name: 'hydrated' })
-      
-      const bucketPlans: BucketPlan[] = [{
-        bucket: { adapter: 'localStorage' },
-        adapter: mockAdapter
-      }]
+
+      const bucketPlans: BucketPlan[] = [
+        {
+          bucket: { adapter: 'localStorage' },
+          adapter: mockAdapter,
+        },
+      ]
 
       await performHydration(store, bucketPlans, undefined, undefined, undefined)
 
@@ -53,11 +55,13 @@ describe('Operations', () => {
 
       const store = useTestStore()
       const mockAdapter = createMockAdapter({ count: 10 })
-      
-      const bucketPlans: BucketPlan[] = [{
-        bucket: { adapter: 'localStorage', key: 'data' },
-        adapter: mockAdapter
-      }]
+
+      const bucketPlans: BucketPlan[] = [
+        {
+          bucket: { adapter: 'localStorage', key: 'data' },
+          adapter: mockAdapter,
+        },
+      ]
 
       await performHydration(store, bucketPlans, undefined, 'myapp', 'v1')
 
@@ -73,11 +77,13 @@ describe('Operations', () => {
 
       const store = useTestStore()
       const mockAdapter = createMockAdapter({ count: 15 })
-      
-      const bucketPlans: BucketPlan[] = [{
-        bucket: { adapter: 'localStorage', key: 'custom-key' },
-        adapter: mockAdapter
-      }]
+
+      const bucketPlans: BucketPlan[] = [
+        {
+          bucket: { adapter: 'localStorage', key: 'custom-key' },
+          adapter: mockAdapter,
+        },
+      ]
 
       await performHydration(store, bucketPlans, undefined, undefined, undefined)
 
@@ -94,19 +100,21 @@ describe('Operations', () => {
       })
 
       const store = useTestStore()
-      const mockAdapter = createMockAdapter({ 
-        count: 20, 
+      const mockAdapter = createMockAdapter({
+        count: 20,
         name: 'hydrated',
-        temp: 'should-be-ignored'
+        temp: 'should-be-ignored',
       })
-      
-      const bucketPlans: BucketPlan[] = [{
-        bucket: { 
-          adapter: 'localStorage', 
-          include: ['count', 'name']
+
+      const bucketPlans: BucketPlan[] = [
+        {
+          bucket: {
+            adapter: 'localStorage',
+            include: ['count', 'name'],
+          },
+          adapter: mockAdapter,
         },
-        adapter: mockAdapter
-      }]
+      ]
 
       await performHydration(store, bucketPlans, undefined, undefined, undefined)
 
@@ -127,13 +135,15 @@ describe('Operations', () => {
         getItem: vi.fn().mockRejectedValue(new Error('Storage error')),
         setItem: vi.fn(),
         removeItem: vi.fn(),
-        subscribe: vi.fn(() => () => {})
+        subscribe: vi.fn(() => () => {}),
       }
-      
-      const bucketPlans: BucketPlan[] = [{
-        bucket: { adapter: 'localStorage' },
-        adapter: mockAdapter
-      }]
+
+      const bucketPlans: BucketPlan[] = [
+        {
+          bucket: { adapter: 'localStorage' },
+          adapter: mockAdapter,
+        },
+      ]
 
       await performHydration(store, bucketPlans, onError, undefined, undefined)
 
@@ -143,8 +153,8 @@ describe('Operations', () => {
           stage: 'hydrate',
           operation: 'read',
           storeId: 'test',
-          adapter: 'localStorage'
-        })
+          adapter: 'localStorage',
+        }),
       )
       expect(store.count).toBe(0) // Should remain default
     })
@@ -157,16 +167,18 @@ describe('Operations', () => {
 
       const store = useTestStore()
       const mockAdapter = createMockAdapter({ count: 100 })
-      
-      const bucketPlans: BucketPlan[] = [{
-        bucket: { 
-          adapter: 'localStorage',
-          beforeHydrate: (slice) => {
-            return { count: (slice as any).count * 2 }
-          }
+
+      const bucketPlans: BucketPlan[] = [
+        {
+          bucket: {
+            adapter: 'localStorage',
+            beforeHydrate: (slice) => {
+              return { count: (slice as any).count * 2 }
+            },
+          },
+          adapter: mockAdapter,
         },
-        adapter: mockAdapter
-      }]
+      ]
 
       await performHydration(store, bucketPlans, undefined, undefined, undefined)
 
@@ -185,13 +197,15 @@ describe('Operations', () => {
         getItem: vi.fn().mockResolvedValue('invalid-json{'),
         setItem: vi.fn(),
         removeItem: vi.fn(),
-        subscribe: vi.fn(() => () => {})
+        subscribe: vi.fn(() => () => {}),
       }
-      
-      const bucketPlans: BucketPlan[] = [{
-        bucket: { adapter: 'localStorage' },
-        adapter: mockAdapter
-      }]
+
+      const bucketPlans: BucketPlan[] = [
+        {
+          bucket: { adapter: 'localStorage' },
+          adapter: mockAdapter,
+        },
+      ]
 
       await performHydration(store, bucketPlans, onError, undefined, undefined)
 
@@ -199,8 +213,8 @@ describe('Operations', () => {
         expect.any(Error),
         expect.objectContaining({
           stage: 'hydrate',
-          operation: 'parse'
-        })
+          operation: 'parse',
+        }),
       )
       expect(store.count).toBe(0) // Should remain default
     })
@@ -216,19 +230,19 @@ describe('Operations', () => {
 
       const store = useTestStore()
       const mockAdapter = createMockAdapter()
-      
+
       const bucketPlan: BucketPlan = {
         bucket: { adapter: 'localStorage' },
-        adapter: mockAdapter
+        adapter: mockAdapter,
       }
 
       const bucketLastStates = new Map()
-      
+
       await persistPlan(bucketPlan, store, bucketLastStates, undefined, undefined, undefined)
 
       expect(mockAdapter.setItem).toHaveBeenCalledWith(
         'test',
-        JSON.stringify({ count: 5, name: 'test' })
+        JSON.stringify({ count: 5, name: 'test' }),
       )
     })
 
@@ -240,16 +254,16 @@ describe('Operations', () => {
 
       const store = useTestStore()
       const mockAdapter = createMockAdapter()
-      
+
       const bucketPlan: BucketPlan = {
         bucket: { adapter: 'localStorage' },
-        adapter: mockAdapter
+        adapter: mockAdapter,
       }
 
       const bucketLastStates = new Map()
       const stateJson = JSON.stringify({ count: 5 })
       bucketLastStates.set(bucketPlan, stateJson)
-      
+
       await persistPlan(bucketPlan, store, bucketLastStates, undefined, undefined, undefined)
 
       expect(mockAdapter.setItem).not.toHaveBeenCalled()
@@ -263,19 +277,19 @@ describe('Operations', () => {
 
       const store = useTestStore()
       const mockAdapter = createMockAdapter()
-      
+
       const bucketPlan: BucketPlan = {
         bucket: { adapter: 'localStorage', key: 'data' },
-        adapter: mockAdapter
+        adapter: mockAdapter,
       }
 
       const bucketLastStates = new Map()
-      
+
       await persistPlan(bucketPlan, store, bucketLastStates, undefined, 'myapp', 'v2')
 
       expect(mockAdapter.setItem).toHaveBeenCalledWith(
         'myapp:vv2:test:data',
-        JSON.stringify({ count: 10 })
+        JSON.stringify({ count: 10 }),
       )
     })
 
@@ -291,16 +305,16 @@ describe('Operations', () => {
         getItem: vi.fn(),
         setItem: vi.fn().mockRejectedValue(new Error('Storage quota exceeded')),
         removeItem: vi.fn(),
-        subscribe: vi.fn(() => () => {})
+        subscribe: vi.fn(() => () => {}),
       }
-      
+
       const bucketPlan: BucketPlan = {
         bucket: { adapter: 'localStorage' },
-        adapter: mockAdapter
+        adapter: mockAdapter,
       }
 
       const bucketLastStates = new Map()
-      
+
       await persistPlan(bucketPlan, store, bucketLastStates, onError, undefined, undefined)
 
       expect(onError).toHaveBeenCalledWith(
@@ -309,8 +323,8 @@ describe('Operations', () => {
           stage: 'persist',
           operation: 'write',
           storeId: 'test',
-          adapter: 'localStorage'
-        })
+          adapter: 'localStorage',
+        }),
       )
     })
 
@@ -324,22 +338,22 @@ describe('Operations', () => {
 
       const store = useTestStore()
       const mockAdapter = createMockAdapter()
-      
+
       const bucketPlan: BucketPlan = {
-        bucket: { 
+        bucket: {
           adapter: 'localStorage',
-          include: ['count', 'name']
+          include: ['count', 'name'],
         },
-        adapter: mockAdapter
+        adapter: mockAdapter,
       }
 
       const bucketLastStates = new Map()
-      
+
       await persistPlan(bucketPlan, store, bucketLastStates, undefined, undefined, undefined)
 
       expect(mockAdapter.setItem).toHaveBeenCalledWith(
         'test',
-        JSON.stringify({ count: 5, name: 'test' })
+        JSON.stringify({ count: 5, name: 'test' }),
       )
     })
   })
@@ -353,20 +367,20 @@ describe('Operations', () => {
 
       const store = useTestStore()
       const mockAdapter = createMockAdapter()
-      
-      const bucketPlans: BucketPlan[] = [{
-        bucket: { adapter: 'localStorage' },
-        adapter: mockAdapter
-      }]
+
+      const bucketPlans: BucketPlan[] = [
+        {
+          bucket: { adapter: 'localStorage' },
+          adapter: mockAdapter,
+        },
+      ]
 
       const bucketLastStates = new Map()
-      
+
       initializeChangeDetection(bucketPlans, store, bucketLastStates)
 
       expect(bucketLastStates.has(bucketPlans[0])).toBe(true)
-      expect(bucketLastStates.get(bucketPlans[0])).toBe(
-        JSON.stringify({ count: 5 })
-      )
+      expect(bucketLastStates.get(bucketPlans[0])).toBe(JSON.stringify({ count: 5 }))
     })
 
     it('initializes change detection with filtered state', () => {
@@ -379,22 +393,22 @@ describe('Operations', () => {
 
       const store = useTestStore()
       const mockAdapter = createMockAdapter()
-      
-      const bucketPlans: BucketPlan[] = [{
-        bucket: { 
-          adapter: 'localStorage',
-          include: ['count']
+
+      const bucketPlans: BucketPlan[] = [
+        {
+          bucket: {
+            adapter: 'localStorage',
+            include: ['count'],
+          },
+          adapter: mockAdapter,
         },
-        adapter: mockAdapter
-      }]
+      ]
 
       const bucketLastStates = new Map()
-      
+
       initializeChangeDetection(bucketPlans, store, bucketLastStates)
 
-      expect(bucketLastStates.get(bucketPlans[0])).toBe(
-        JSON.stringify({ count: 5 })
-      )
+      expect(bucketLastStates.get(bucketPlans[0])).toBe(JSON.stringify({ count: 5 }))
     })
 
     it('handles multiple bucket plans', () => {
@@ -405,20 +419,20 @@ describe('Operations', () => {
       })
 
       const store = useTestStore()
-      
+
       const bucketPlans: BucketPlan[] = [
         {
           bucket: { adapter: 'localStorage', include: ['count'] },
-          adapter: createMockAdapter()
+          adapter: createMockAdapter(),
         },
         {
           bucket: { adapter: 'sessionStorage', include: ['name'] },
-          adapter: createMockAdapter()
-        }
+          adapter: createMockAdapter(),
+        },
       ]
 
       const bucketLastStates = new Map()
-      
+
       initializeChangeDetection(bucketPlans, store, bucketLastStates)
 
       expect(bucketLastStates.size).toBe(2)
@@ -436,20 +450,22 @@ describe('Operations', () => {
       })
 
       const store = useTestStore()
-      
+
       // Mock adapter with initial data
       const mockAdapter = createMockAdapter({ count: 42, name: 'stored' })
-      
-      const bucketPlans: BucketPlan[] = [{
-        bucket: { adapter: 'localStorage' },
-        adapter: mockAdapter
-      }]
+
+      const bucketPlans: BucketPlan[] = [
+        {
+          bucket: { adapter: 'localStorage' },
+          adapter: mockAdapter,
+        },
+      ]
 
       const bucketLastStates = new Map()
 
       // 1. Hydrate from storage
       await performHydration(store, bucketPlans, undefined, undefined, undefined)
-      
+
       expect(store.count).toBe(42)
       expect(store.name).toBe('stored')
 
@@ -466,7 +482,7 @@ describe('Operations', () => {
 
       expect(mockAdapter.setItem).toHaveBeenCalledWith(
         'test',
-        JSON.stringify({ count: 100, name: 'updated' })
+        JSON.stringify({ count: 100, name: 'updated' }),
       )
     })
   })

@@ -19,21 +19,23 @@ describe('Core Modules', () => {
   describe('Bucket Resolver', () => {
     it('resolves simple string storage option', () => {
       const buckets = resolveBuckets('localStorage')
-      
-      expect(buckets).toEqual([{
-        adapter: 'localStorage'
-      }])
+
+      expect(buckets).toEqual([
+        {
+          adapter: 'localStorage',
+        },
+      ])
     })
 
     it('resolves single bucket object', () => {
       const config = {
         adapter: 'sessionStorage' as const,
         include: ['count'],
-        key: 'session-data'
+        key: 'session-data',
       }
-      
+
       const buckets = resolveBuckets(config)
-      
+
       expect(buckets).toEqual([config])
     })
 
@@ -41,21 +43,21 @@ describe('Core Modules', () => {
       const config = {
         buckets: [
           { adapter: 'localStorage' as const, include: ['count'] },
-          { adapter: 'sessionStorage' as const, include: ['name'] }
-        ]
+          { adapter: 'sessionStorage' as const, include: ['name'] },
+        ],
       }
-      
+
       const buckets = resolveBuckets(config)
-      
+
       expect(buckets).toEqual(config.buckets)
     })
 
     it('resolves single bucket in buckets property', () => {
       const bucket = { adapter: 'localStorage' as const, include: ['count'] }
       const config = { buckets: bucket }
-      
+
       const buckets = resolveBuckets(config)
-      
+
       expect(buckets).toEqual([bucket])
     })
 
@@ -68,19 +70,19 @@ describe('Core Modules', () => {
           {
             adapter: 'localStorage',
             include: ['persistent'],
-            key: 'app-data'
+            key: 'app-data',
           },
           {
             adapter: 'cookies',
             include: ['session'],
-            options: { maxAgeSeconds: 3600 }
-          }
+            options: { maxAgeSeconds: 3600 },
+          },
         ],
-        onError: vi.fn()
+        onError: vi.fn(),
       }
-      
+
       const buckets = resolveBuckets(config)
-      
+
       expect(buckets).toEqual(config.buckets)
       expect(buckets).toHaveLength(2)
       expect(buckets[0].adapter).toBe('localStorage')
@@ -92,7 +94,7 @@ describe('Core Modules', () => {
     it('resolves localStorage adapter', () => {
       const bucket = { adapter: 'localStorage' as const }
       const adapter = resolveStorage(bucket, 'test-store')
-      
+
       expect(adapter).toBeDefined()
       expect(typeof adapter.getItem).toBe('function')
       expect(typeof adapter.setItem).toBe('function')
@@ -101,7 +103,7 @@ describe('Core Modules', () => {
     it('resolves sessionStorage adapter', () => {
       const bucket = { adapter: 'sessionStorage' as const }
       const adapter = resolveStorage(bucket, 'test-store')
-      
+
       expect(adapter).toBeDefined()
     })
 
@@ -110,11 +112,11 @@ describe('Core Modules', () => {
         adapter: 'cookies' as const,
         options: {
           path: '/app',
-          maxAgeSeconds: 3600
-        }
+          maxAgeSeconds: 3600,
+        },
       }
       const adapter = resolveStorage(bucket, 'test-store')
-      
+
       expect(adapter).toBeDefined()
     })
 
@@ -123,18 +125,18 @@ describe('Core Modules', () => {
         adapter: 'indexedDB' as const,
         options: {
           dbName: 'TestDB',
-          storeName: 'TestStore'
-        }
+          storeName: 'TestStore',
+        },
       }
       const adapter = resolveStorage(bucket, 'test-store')
-      
+
       expect(adapter).toBeDefined()
     })
 
     it('resolves indexedDB adapter with default options', () => {
       const bucket = { adapter: 'indexedDB' as const }
       const adapter = resolveStorage(bucket, 'test-store')
-      
+
       expect(adapter).toBeDefined()
     })
   })
@@ -155,9 +157,9 @@ describe('Core Modules', () => {
       const errorHandler = vi.fn()
       const config: StorageOptions = {
         buckets: { adapter: 'localStorage' },
-        onError: errorHandler
+        onError: errorHandler,
       }
-      
+
       const onError = resolveOnError(config)
       expect(onError).toBe(errorHandler)
     })
@@ -166,9 +168,9 @@ describe('Core Modules', () => {
       const errorHandler = vi.fn()
       const config: StorageOptions = {
         buckets: { adapter: 'localStorage' },
-        onError: errorHandler
+        onError: errorHandler,
       }
-      
+
       const onError = resolveOnError(config)
       const error = new Error('Test error')
       const context = {
@@ -176,11 +178,11 @@ describe('Core Modules', () => {
         operation: 'write' as const,
         storeId: 'test-store',
         adapter: 'localStorage',
-        key: 'test-key'
+        key: 'test-key',
       }
-      
+
       onError?.(error, context)
-      
+
       expect(errorHandler).toHaveBeenCalledWith(error, context)
     })
   })
@@ -190,9 +192,9 @@ describe('Core Modules', () => {
       const state = {
         count: 5,
         name: 'test',
-        nested: { value: 42 }
+        nested: { value: 42 },
       }
-      
+
       const result = resolveState(state, undefined, undefined)
       expect(result).toEqual(state)
     })
@@ -201,9 +203,9 @@ describe('Core Modules', () => {
       const state = {
         count: 5,
         name: 'test',
-        temp: 'ignored'
+        temp: 'ignored',
       }
-      
+
       const result = resolveState(state, 'count', undefined)
       expect(result).toEqual({ count: 5 })
     })
@@ -212,9 +214,9 @@ describe('Core Modules', () => {
       const state = {
         count: 5,
         name: 'test',
-        temp: 'ignored'
+        temp: 'ignored',
       }
-      
+
       const result = resolveState(state, ['count', 'name'], undefined)
       expect(result).toEqual({ count: 5, name: 'test' })
     })
@@ -223,9 +225,9 @@ describe('Core Modules', () => {
       const state = {
         count: 5,
         name: 'test',
-        temp: 'ignored'
+        temp: 'ignored',
       }
-      
+
       const result = resolveState(state, undefined, 'temp')
       expect(result).toEqual({ count: 5, name: 'test' })
     })
@@ -235,9 +237,9 @@ describe('Core Modules', () => {
         count: 5,
         name: 'test',
         temp: 'ignored',
-        other: 'also-ignored'
+        other: 'also-ignored',
       }
-      
+
       const result = resolveState(state, undefined, ['temp', 'other'])
       expect(result).toEqual({ count: 5, name: 'test' })
     })
@@ -245,9 +247,9 @@ describe('Core Modules', () => {
     it('handles non-existent include fields gracefully', () => {
       const state = {
         count: 5,
-        name: 'test'
+        name: 'test',
       }
-      
+
       const result = resolveState(state, ['count', 'nonexistent'], undefined)
       expect(result).toEqual({ count: 5 })
     })
@@ -255,9 +257,9 @@ describe('Core Modules', () => {
     it('handles non-existent exclude fields gracefully', () => {
       const state = {
         count: 5,
-        name: 'test'
+        name: 'test',
       }
-      
+
       const result = resolveState(state, undefined, ['nonexistent'])
       expect(result).toEqual({ count: 5, name: 'test' })
     })
@@ -265,9 +267,9 @@ describe('Core Modules', () => {
     it('handles empty include array', () => {
       const state = {
         count: 5,
-        name: 'test'
+        name: 'test',
       }
-      
+
       const result = resolveState(state, [], undefined)
       expect(result).toEqual({})
     })
@@ -275,9 +277,9 @@ describe('Core Modules', () => {
     it('handles empty exclude array', () => {
       const state = {
         count: 5,
-        name: 'test'
+        name: 'test',
       }
-      
+
       const result = resolveState(state, undefined, [])
       expect(result).toEqual({ count: 5, name: 'test' })
     })
@@ -286,13 +288,13 @@ describe('Core Modules', () => {
       const state = {
         user: { name: 'John', age: 30 },
         count: 5,
-        temp: 'ignored'
+        temp: 'ignored',
       }
-      
+
       const result = resolveState(state, ['user', 'count'], undefined)
       expect(result).toEqual({
         user: { name: 'John', age: 30 },
-        count: 5
+        count: 5,
       })
     })
 
@@ -302,10 +304,10 @@ describe('Core Modules', () => {
         const name = ref('test')
         return { count, name }
       })
-      
+
       const store = useTestStore()
       const result = resolveState(store.$state, ['count'], undefined)
-      
+
       expect(result).toEqual({ count: 5 })
       expect(result).not.toBe(store.$state)
     })
@@ -320,24 +322,24 @@ describe('Core Modules', () => {
           {
             adapter: 'localStorage',
             include: ['count'],
-            key: 'counter-data'
-          }
+            key: 'counter-data',
+          },
         ],
-        onError: vi.fn()
+        onError: vi.fn(),
       }
-      
+
       // Resolve buckets
       const buckets = resolveBuckets(config)
       expect(buckets).toHaveLength(1)
-      
+
       // Resolve storage adapter
       const adapter = resolveStorage(buckets[0], 'test-store')
       expect(adapter).toBeDefined()
-      
+
       // Resolve error handler
       const onError = resolveOnError(config)
       expect(onError).toBe(config.onError)
-      
+
       // Resolve state
       const state = { count: 5, name: 'test', temp: 'ignored' }
       const resolvedState = resolveState(state, buckets[0].include, buckets[0].exclude)
@@ -350,7 +352,7 @@ describe('Core Modules', () => {
       const adapter = resolveStorage(buckets[0], 'minimal-store')
       const onError = resolveOnError('localStorage')
       const state = resolveState({ data: 'test' }, undefined, undefined)
-      
+
       expect(buckets).toHaveLength(1)
       expect(adapter).toBeDefined()
       expect(onError).toBeUndefined()

@@ -75,36 +75,31 @@ Object.defineProperty(window, 'removeEventListener', {
 beforeEach(() => {
   // Reset all mocks before each test
   vi.clearAllMocks()
-  
+
   // Reset storage mock state
   localStorageMock.length = 0
   sessionStorageMock.length = 0
-  
+
   // Reset storage methods
   localStorageMock.getItem.mockReturnValue(null)
   localStorageMock.setItem.mockImplementation(() => {})
   localStorageMock.removeItem.mockImplementation(() => {})
-  
+
   sessionStorageMock.getItem.mockReturnValue(null)
   sessionStorageMock.setItem.mockImplementation(() => {})
   sessionStorageMock.removeItem.mockImplementation(() => {})
-  
+
   // Reset cookie
   Object.defineProperty(document, 'cookie', {
     get: vi.fn(() => ''),
     set: vi.fn(),
     configurable: true,
   })
-  
+
   // Reset window event listeners
   window.addEventListener = vi.fn()
   window.removeEventListener = vi.fn()
 })
 
 // Export mocks for test usage
-export {
-  localStorageMock,
-  sessionStorageMock,
-  indexedDBMock,
-  broadcastChannelMock,
-}
+export { localStorageMock, sessionStorageMock, indexedDBMock, broadcastChannelMock }

@@ -74,9 +74,9 @@ describe('Utilities', () => {
     it('preserves function context', () => {
       const obj = {
         value: 'test',
-        method: vi.fn(function(this: any) {
+        method: vi.fn(function (this: any) {
           return this.value
-        })
+        }),
       }
 
       const debouncedMethod = debounce(obj.method.bind(obj), 100)
@@ -92,7 +92,7 @@ describe('Utilities', () => {
 
       debouncedFn('first')
       vi.advanceTimersByTime(50)
-      
+
       debouncedFn('second') // Should cancel first call
       vi.advanceTimersByTime(100)
 
@@ -183,18 +183,18 @@ describe('Utilities', () => {
   describe('Utility Integration', () => {
     it('debounce works correctly in simulated browser environment', () => {
       vi.useFakeTimers()
-      
+
       expect(isServerEnvironment()).toBe(false)
-      
+
       const fn = vi.fn()
       const debouncedFn = debounce(fn, 200)
-      
+
       debouncedFn()
       expect(fn).not.toHaveBeenCalled()
-      
+
       vi.advanceTimersByTime(200)
       expect(fn).toHaveBeenCalledTimes(1)
-      
+
       vi.useRealTimers()
     })
 
@@ -203,11 +203,11 @@ describe('Utilities', () => {
       vi.useFakeTimers()
       const fn = vi.fn()
       const debouncedFn = debounce(fn, 999999)
-      
+
       debouncedFn()
       vi.advanceTimersByTime(999999)
       expect(fn).toHaveBeenCalledTimes(1)
-      
+
       vi.useRealTimers()
     })
   })
