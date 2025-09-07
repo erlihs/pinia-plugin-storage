@@ -146,34 +146,34 @@ describe('Utilities', () => {
     })
 
     it('returns true when window is undefined', () => {
-      // @ts-ignore
+      // @ts-expect-error - Intentionally deleting global.window to test server environment detection
       delete global.window
       expect(isServerEnvironment()).toBe(true)
     })
 
     it('returns true when document is undefined', () => {
-      // @ts-ignore
+      // @ts-expect-error - Intentionally deleting global.document to test server environment detection
       delete global.document
       expect(isServerEnvironment()).toBe(true)
     })
 
     it('returns true when both window and document are undefined', () => {
-      // @ts-ignore
+      // @ts-expect-error - Intentionally deleting global.window to test server environment detection
       delete global.window
-      // @ts-ignore
+      // @ts-expect-error - Intentionally deleting global.document to test server environment detection
       delete global.document
       expect(isServerEnvironment()).toBe(true)
     })
 
     it('handles edge case where window exists but document does not', () => {
-      // @ts-ignore
+      // @ts-expect-error - Intentionally deleting global.document to test edge case behavior
       delete global.document
       global.window = {} as any
       expect(isServerEnvironment()).toBe(true)
     })
 
     it('handles edge case where document exists but window does not', () => {
-      // @ts-ignore
+      // @ts-expect-error - Intentionally deleting global.window to test edge case behavior
       delete global.window
       global.document = {} as any
       expect(isServerEnvironment()).toBe(true)

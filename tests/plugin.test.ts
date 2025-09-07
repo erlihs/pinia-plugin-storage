@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, defineStore, setActivePinia } from 'pinia'
 import { ref } from 'vue'
 import { createPiniaPluginStorage, updateStorage } from '../src/plugin'
-import { localStorageMock, sessionStorageMock } from './setup'
+import { localStorageMock } from './setup'
 
 // Test store definitions using composition API
 const useBasicStore = defineStore('basic', () => {
@@ -43,53 +43,54 @@ const useStorageStore = defineStore(
   },
 )
 
-const useBucketStore = defineStore(
-  'bucket',
-  () => {
-    const persistentData = ref('important')
-    const sessionData = ref('temporary')
-    const localData = ref('cached')
-    const excludedData = ref('volatile')
+// Currently unused but kept for future bucket testing
+// const useBucketStore = defineStore(
+//   'bucket',
+//   () => {
+//     const persistentData = ref('important')
+//     const sessionData = ref('temporary')
+//     const localData = ref('cached')
+//     const excludedData = ref('volatile')
 
-    function updatePersistent(value: string) {
-      persistentData.value = value
-    }
+//     function updatePersistent(value: string) {
+//       persistentData.value = value
+//     }
 
-    function updateSession(value: string) {
-      sessionData.value = value
-    }
+//     function updateSession(value: string) {
+//       sessionData.value = value
+//     }
 
-    function updateLocal(value: string) {
-      localData.value = value
-    }
+//     function updateLocal(value: string) {
+//       localData.value = value
+//     }
 
-    return {
-      persistentData,
-      sessionData,
-      localData,
-      excludedData,
-      updatePersistent,
-      updateSession,
-      updateLocal,
-    }
-  },
-  {
-    storage: {
-      buckets: [
-        {
-          adapter: 'localStorage',
-          include: ['persistentData', 'localData'],
-          key: 'persistent-bucket',
-        },
-        {
-          adapter: 'sessionStorage',
-          include: ['sessionData'],
-          key: 'session-bucket',
-        },
-      ],
-    },
-  },
-)
+//     return {
+//       persistentData,
+//       sessionData,
+//       localData,
+//       excludedData,
+//       updatePersistent,
+//       updateSession,
+//       updateLocal,
+//     }
+//   },
+//   {
+//     storage: {
+//       buckets: [
+//         {
+//           adapter: 'localStorage',
+//           include: ['persistentData', 'localData'],
+//           key: 'persistent-bucket',
+//         },
+//         {
+//           adapter: 'sessionStorage',
+//           include: ['sessionData'],
+//           key: 'session-bucket',
+//         },
+//       ],
+//     },
+//   },
+// )
 
 describe('Pinia Plugin Storage', () => {
   let pinia: ReturnType<typeof createPinia>

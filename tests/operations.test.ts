@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, defineStore, setActivePinia } from 'pinia'
 import { ref } from 'vue'
 import { performHydration, persistPlan, initializeChangeDetection } from '../src/operations'
-import { localStorageMock, sessionStorageMock } from './setup'
 import type { BucketPlan } from '../src/operations'
 
 // Mock adapters for testing
