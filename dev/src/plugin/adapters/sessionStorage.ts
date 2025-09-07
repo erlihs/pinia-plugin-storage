@@ -1,9 +1,8 @@
 import type { StorageAdapter } from './index'
 
 export const sessionStorageAdapter = (): StorageAdapter => {
-  const hasWindow = typeof window !== 'undefined' && 
-                   typeof document !== 'undefined' && 
-                   !!window.sessionStorage
+  const hasWindow =
+    typeof window !== 'undefined' && typeof document !== 'undefined' && !!window.sessionStorage
   return {
     async getItem(k) {
       if (!hasWindow) return undefined

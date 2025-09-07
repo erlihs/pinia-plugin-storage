@@ -5,11 +5,7 @@ export type IndexedDBOptions = { dbName: string; storeName: string; dbVersion?: 
 function openIDB({ dbName, storeName, dbVersion = 1 }: IndexedDBOptions): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     // SSR/environment guards
-    if (
-      typeof window === 'undefined' ||
-      typeof indexedDB === 'undefined' ||
-      !indexedDB
-    ) {
+    if (typeof window === 'undefined' || typeof indexedDB === 'undefined' || !indexedDB) {
       reject(new Error('IndexedDB is not available in this environment'))
       return
     }
@@ -48,10 +44,18 @@ export const indexedDBAdapter = (options: IndexedDBOptions): StorageAdapter => {
     typeof BroadcastChannel === 'undefined'
   ) {
     return {
-      async getItem() { return undefined },
-      async setItem() { /* no-op */ },
-      async removeItem() { /* no-op */ },
-      subscribe() { return () => {} }
+      async getItem() {
+        return undefined
+      },
+      async setItem() {
+        /* no-op */
+      },
+      async removeItem() {
+        /* no-op */
+      },
+      subscribe() {
+        return () => {}
+      },
     }
   }
 

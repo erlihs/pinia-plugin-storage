@@ -53,7 +53,10 @@ export const useCounterStoreDefault = defineStore(
       ],
       // Example of comprehensive error handling
       onError: (error, ctx) => {
-        console.warn(`Storage error in ${ctx.stage}/${ctx.operation} for ${ctx.storeId} (${ctx.adapter}):`, error)
+        console.warn(
+          `Storage error in ${ctx.stage}/${ctx.operation} for ${ctx.storeId} (${ctx.adapter}):`,
+          error,
+        )
         // In production, you might want to send this to your error tracking service
         // errorTracker.captureException(error, { extra: ctx })
       },
@@ -178,7 +181,7 @@ export const useCounterStoreCrossTab = defineStore(
         {
           adapter: 'indexedDB',
           include: ['settings'], // Settings sync via IndexedDB
-          options: { dbName: 'app', storeName: 'userSettings' }
+          options: { dbName: 'app', storeName: 'userSettings' },
         },
       ],
       onError: (error, ctx) => {
@@ -193,9 +196,9 @@ export const useCounterStoreNamespaced = defineStore(
   'counter-namespaced',
   () => {
     const count = ref(0)
-    const metadata = ref({ 
+    const metadata = ref({
       version: '2.0',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     })
 
     function increment() {
@@ -208,24 +211,27 @@ export const useCounterStoreNamespaced = defineStore(
   {
     storage: {
       // Global namespacing prevents app collisions
-      namespace: 'myApp',                    // Keys: "myApp:v2:counter-namespaced:main"
-      version: '2',                          // Enables schema migration from v1 → v2
-      
+      namespace: 'myApp', // Keys: "myApp:v2:counter-namespaced:main"
+      version: '2', // Enables schema migration from v1 → v2
+
       buckets: [
         {
           adapter: 'localStorage',
-          key: 'main',                       // Bucket identifier for multi-bucket setups
+          key: 'main', // Bucket identifier for multi-bucket setups
           include: ['count', 'metadata'],
         },
         {
-          adapter: 'sessionStorage', 
-          key: 'cache',                      // Keys: "myApp:v2:counter-namespaced:cache"
-          include: ['metadata'],             // Different bucket for temporary metadata
+          adapter: 'sessionStorage',
+          key: 'cache', // Keys: "myApp:v2:counter-namespaced:cache"
+          include: ['metadata'], // Different bucket for temporary metadata
         },
       ],
-      
+
       onError: (error, ctx) => {
-        console.warn(`Namespaced storage error in ${ctx.stage}/${ctx.operation} for key ${ctx.key}:`, error)
+        console.warn(
+          `Namespaced storage error in ${ctx.stage}/${ctx.operation} for key ${ctx.key}:`,
+          error,
+        )
       },
     },
   },

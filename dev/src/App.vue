@@ -92,7 +92,11 @@ const counterStoreCrossTab = useCounterStoreCrossTab()
       </tr>
       <tr>
         <td>User Name</td>
-        <td><button @click="counterStoreCrossTab.updateName('User ' + Date.now())">Update Name</button></td>
+        <td>
+          <button @click="counterStoreCrossTab.updateName('User ' + Date.now())">
+            Update Name
+          </button>
+        </td>
         <td>{{ counterStoreCrossTab.name }}</td>
         <td>localStorage</td>
         <td>Syncs across tabs instantly</td>

@@ -9,7 +9,7 @@ Phase 2: Performance & Features
 🔄 Per-bucket debouncing - More granular control (SKIPPED - basic implementation sufficient)
 ✅ Change detection - Avoid unnecessary writes
 ✅ Key namespacing - Prevent collisions and enable versioning
-Store lifecycle integration - Handle $reset and cleanup
+🔄 Store lifecycle integration - Handle cleanup (modern reset via state updates)
 Phase 3: Developer Experience
 Better type safety - Enforce mutual exclusivity at type level
 Error observability - Logging and debugging hooks
