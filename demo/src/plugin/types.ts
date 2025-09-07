@@ -82,9 +82,7 @@ export type StorageOptions =
       /** Schema version for data migration support */
       version?: string
       /** Array of storage buckets with different configurations */
-      buckets?: Bucket[]
-      /** Default adapter to use when not specified in buckets */
-      defaultAdapter?: Adapters
+      buckets: Bucket[] | Bucket
       /** Global debounce delay in milliseconds */
       debounceDelayMs?: number
       /** Error handler for storage operations */

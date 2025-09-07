@@ -10,11 +10,7 @@ import type { StorageOptions, Bucket, Adapters } from '../types'
  * @returns Array of bucket configurations
  */
 export const resolveBuckets = (options: StorageOptions | undefined): Bucket[] => {
-  const configuredDefault: Adapters | undefined =
-    typeof options === 'object' && options && 'defaultAdapter' in options
-      ? options.defaultAdapter
-      : undefined
-  const fallback: Adapters = configuredDefault || 'sessionStorage'
+  const fallback: Adapters = 'sessionStorage'
 
   if (!options) return [{ adapter: fallback } as Bucket]
 
@@ -24,11 +20,12 @@ export const resolveBuckets = (options: StorageOptions | undefined): Bucket[] =>
     return [{ adapter: options } as Bucket]
   }
 
-  if ('buckets' in options && Array.isArray(options.buckets)) {
-    if (!options.buckets.length) return [{ adapter: fallback } as Bucket]
-    return options.buckets.map((b) => {
+  if ('buckets' in options) {
+    const buckets = Array.isArray(options.buckets) ? options.buckets : [options.buckets]
+    if (!buckets.length) return [{ adapter: fallback } as Bucket]
+    return buckets.map((b) => {
       if (b.adapter) return b
-      // If adapter missing, assign fallback assuming it is local/session/cookies/indexedDB; treat absence of options generically.
+      // If adapter missing, assign fallback (sessionStorage)
       return { adapter: fallback } as Bucket
     }) as Bucket[]
   }
