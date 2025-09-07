@@ -39,6 +39,8 @@
   "keywords": [
     "pinia",
     "vue",
+    "vue3",
+    "vuejs",
     "state",
     "persistence",
     "storage",
@@ -46,7 +48,13 @@
     "localStorage",
     "sessionStorage",
     "indexedDB",
-    "cookies"
+    "cookies",
+    "state-management",
+    "hydration",
+    "synchronization",
+    "typescript",
+    "browser-storage",
+    "tab-sync"
   ],
   "author": "Jānis Erlihs",
   "license": "MIT",
