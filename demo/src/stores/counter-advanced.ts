@@ -75,14 +75,12 @@ export const useCounterStoreAdvanced = defineStore(
     storage: {
       namespace: 'app', // Global namespace for all keys
       version: '2', // Versioning for schema migrations
-      debounceDelayMs: 100, // Global debounce delay
       buckets: [
         // Session Storage bucket - stores session-only data
         {
           adapter: 'sessionStorage',
           key: 'session-counters', // Custom storage key
           include: ['countS', 'extCountS'],
-          debounceDelayMs: 50, // Override global debounce for faster session updates
           beforeHydrate: (slice, store) => {
             console.log('🔄 Session Storage: Before hydrate for store', store.$id, slice)
             // Transform data if needed before merging into store
@@ -94,7 +92,6 @@ export const useCounterStoreAdvanced = defineStore(
           adapter: 'localStorage',
           key: 'persistent-counters',
           include: ['countL', 'extCountL'],
-          debounceDelayMs: 200, // Slower updates for persistent storage
           beforeHydrate: (slice, store) => {
             console.log('💾 Local Storage: Before hydrate for store', store.$id, slice)
             return slice
@@ -105,7 +102,6 @@ export const useCounterStoreAdvanced = defineStore(
           adapter: 'cookies',
           key: 'cookie-counters',
           include: ['countC', 'extCountC'],
-          debounceDelayMs: 300, // Even slower for cookies due to size limitations
           options: {
             path: '/',
             domain: undefined, // Use current domain
@@ -126,7 +122,6 @@ export const useCounterStoreAdvanced = defineStore(
           adapter: 'indexedDB',
           key: 'indexed-counters',
           include: ['countI', 'extCountI'],
-          debounceDelayMs: 150, // Moderate debounce for IndexedDB
           options: {
             dbName: 'PiniaAdvancedDemo',
             storeName: 'counters',

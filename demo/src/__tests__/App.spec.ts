@@ -6,6 +6,7 @@ import App from '../App.vue'
 import { useCounterStoreNone } from '../stores/counter-none'
 import { useCounterStoreBasic } from '../stores/counter-basic'
 import { useCounterStoreAdvanced } from '../stores/counter-advanced'
+import { useCounterStoreRateLimit } from '../stores/counter-rate-limit'
 
 // Mock storage APIs
 const localStorageMock = {
@@ -65,6 +66,8 @@ describe('App.vue', () => {
 
   afterEach(() => {
     vi.clearAllMocks()
+    // Clear any running timers to prevent leaks
+    vi.clearAllTimers()
   })
 
   describe('Component Rendering', () => {
@@ -98,15 +101,18 @@ describe('App.vue', () => {
       expect(tableHeaders[3].text()).toBe('Expected behavior')
     })
 
-    it('renders advanced storage section', () => {
+    it('renders advanced storage sections', () => {
       const wrapper = mount(App, {
         global: {
           plugins: [pinia],
         },
       })
 
-      const advancedSection = wrapper.findAll('h2')[1]
-      expect(advancedSection.text()).toBe('Advanced')
+      const h2Elements = wrapper.findAll('h2')
+      expect(h2Elements).toHaveLength(3)
+      expect(h2Elements[0].text()).toBe('Basic')
+      expect(h2Elements[1].text()).toBe('Advanced - adapters')
+      expect(h2Elements[2].text()).toBe('Advanced - rate limiting')
     })
 
     it('renders cross-tab broadcasting information', () => {
@@ -135,7 +141,7 @@ describe('App.vue', () => {
       const reloadButtons = wrapper
         .findAll('button')
         .filter((button) => button.text().includes('🔄 Reload Page'))
-      expect(reloadButtons).toHaveLength(2)
+      expect(reloadButtons).toHaveLength(3) // Now we have 3 tables with reload buttons
     })
   })
 
@@ -170,6 +176,7 @@ describe('App.vue', () => {
       const noneStore = useCounterStoreNone()
       const basicStore = useCounterStoreBasic()
       const advancedStore = useCounterStoreAdvanced()
+      const rateLimitStore = useCounterStoreRateLimit()
 
       expect(noneStore.count).toBe(0)
       expect(basicStore.count).toBe(0)
@@ -177,6 +184,10 @@ describe('App.vue', () => {
       expect(advancedStore.countL).toBe(0)
       expect(advancedStore.countC).toBe(0)
       expect(advancedStore.countI).toBe(0)
+      expect(rateLimitStore.countNone).toBe(0)
+      expect(rateLimitStore.countDebounced).toBe(0)
+      expect(rateLimitStore.countThrottled).toBe(0)
+      expect(rateLimitStore.countMixed).toBe(0)
     })
   })
 
@@ -234,9 +245,9 @@ describe('App.vue', () => {
 
       const advancedStore = useCounterStoreAdvanced()
 
-      // Find all tbody elements (there are two tables)
+      // Find all tbody elements (there are now three tables)
       const tbodies = wrapper.findAll('tbody')
-      const advancedTbody = tbodies[1] // Second table
+      const advancedTbody = tbodies[1] // Second table (Advanced - adapters)
       const rows = advancedTbody.findAll('tr')
 
       // Test sessionStorage buttons (first row)
@@ -258,6 +269,41 @@ describe('App.vue', () => {
       const indexedButtons = rows[3].findAll('button')
       await indexedButtons[1].trigger('click')
       expect(advancedStore.countI).toBe(1)
+    })
+
+    it('handles rate limiting store buttons', async () => {
+      const wrapper = mount(App, {
+        global: {
+          plugins: [pinia],
+        },
+      })
+
+      const rateLimitStore = useCounterStoreRateLimit()
+
+      // Find the rate limiting tbody (third table)
+      const tbodies = wrapper.findAll('tbody')
+      const rateLimitTbody = tbodies[2] // Third table (Advanced - rate limiting)
+      const rows = rateLimitTbody.findAll('tr')
+
+      // Test none rate limiting buttons (first row)
+      const noneButtons = rows[0].findAll('button')
+      await noneButtons[1].trigger('click')
+      expect(rateLimitStore.countNone).toBe(1)
+
+      // Test debounced buttons (second row)
+      const debouncedButtons = rows[1].findAll('button')
+      await debouncedButtons[1].trigger('click')
+      expect(rateLimitStore.countDebounced).toBe(1)
+
+      // Test throttled buttons (third row)
+      const throttledButtons = rows[2].findAll('button')
+      await throttledButtons[1].trigger('click')
+      expect(rateLimitStore.countThrottled).toBe(1)
+
+      // Test mixed buttons (fourth row)
+      const mixedButtons = rows[3].findAll('button')
+      await mixedButtons[1].trigger('click')
+      expect(rateLimitStore.countMixed).toBe(1)
     })
 
     it('handles page reload button', async () => {
@@ -329,6 +375,28 @@ describe('App.vue', () => {
       expect(advancedStore.countL).toBe(2)
       expect(advancedStore.countC).toBe(3)
       expect(advancedStore.countI).toBe(4)
+    })
+
+    it('rate limiting store is configured correctly', () => {
+      mount(App, {
+        global: {
+          plugins: [pinia],
+        },
+      })
+
+      const rateLimitStore = useCounterStoreRateLimit()
+      expect(rateLimitStore.$id).toBe('counter-rate-limit')
+
+      // Verify all rate limiting counter functions work
+      rateLimitStore.incrementNone(1)
+      rateLimitStore.incrementDebounced(2)
+      rateLimitStore.incrementThrottled(3)
+      rateLimitStore.incrementMixed(4)
+
+      expect(rateLimitStore.countNone).toBe(1)
+      expect(rateLimitStore.countDebounced).toBe(2)
+      expect(rateLimitStore.countThrottled).toBe(3)
+      expect(rateLimitStore.countMixed).toBe(4)
     })
 
     it('handles storage errors gracefully', () => {
@@ -406,7 +474,7 @@ describe('App.vue', () => {
       })
 
       const tables = wrapper.findAll('table')
-      expect(tables).toHaveLength(2)
+      expect(tables).toHaveLength(3) // Now we have 3 tables
 
       // Each table should have thead, tbody, and tfoot
       tables.forEach((table) => {
@@ -429,6 +497,70 @@ describe('App.vue', () => {
       expect(text).toContain('Values persist during session but reset after browser restart')
       expect(text).toContain('Values stored in cookies with 30s expiry')
       expect(text).toContain('Values stored in IndexedDB for complex data')
+      // Rate limiting behaviors
+      expect(text).toContain('Every click saves immediately to localStorage')
+      expect(text).toContain('Saves only after 1 second of inactivity')
+      expect(text).toContain('Saves at most once per second')
+    })
+  })
+
+  describe('Live Storage Monitoring', () => {
+    beforeEach(() => {
+      // Mock setInterval and clearInterval
+      vi.spyOn(global, 'setInterval')
+      vi.spyOn(global, 'clearInterval')
+    })
+
+    it('sets up localStorage polling on mount', () => {
+      const wrapper = mount(App, {
+        global: {
+          plugins: [pinia],
+        },
+      })
+
+      expect(setInterval).toHaveBeenCalledWith(expect.any(Function), 200)
+
+      // Clean up to prevent hanging timers
+      wrapper.unmount()
+    })
+
+    it('cleans up polling on unmount', () => {
+      const wrapper = mount(App, {
+        global: {
+          plugins: [pinia],
+        },
+      })
+
+      wrapper.unmount()
+      expect(clearInterval).toHaveBeenCalled()
+    })
+
+    it('displays localStorage values in the UI', async () => {
+      // Mock localStorage values
+      localStorageMock.getItem.mockImplementation((key) => {
+        const mockData = {
+          'counter-rate-limit:none-counters':
+            '{"countNone":5,"extCountNone":{"decimal":5,"hex":"0x5"}}',
+          'counter-rate-limit:debounced-counters':
+            '{"countDebounced":3,"extCountDebounced":{"decimal":3,"hex":"0x3"}}',
+        }
+        return mockData[key as keyof typeof mockData] || null
+      })
+
+      const wrapper = mount(App, {
+        global: {
+          plugins: [pinia],
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+
+      // Check that localStorage values are displayed in code elements
+      const codeElements = wrapper.findAll('code.storage-value')
+      expect(codeElements.length).toBeGreaterThan(0)
+
+      // Clean up to prevent hanging timers
+      wrapper.unmount()
     })
   })
 })

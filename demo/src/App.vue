@@ -1,11 +1,47 @@
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useCounterStoreNone } from './stores/counter-none'
 import { useCounterStoreBasic } from './stores/counter-basic'
 import { useCounterStoreAdvanced } from './stores/counter-advanced'
+import { useCounterStoreRateLimit } from './stores/counter-rate-limit'
 
 const counterStoreNone = useCounterStoreNone()
 const counterStoreBasic = useCounterStoreBasic()
 const counterStoreAdvanced = useCounterStoreAdvanced()
+const counterStoreRateLimit = useCounterStoreRateLimit()
+
+// Live localStorage monitoring
+const liveStorageValues = ref({
+  none: '',
+  debounced: '',
+  throttled: '',
+  mixed: '',
+})
+
+let pollInterval: ReturnType<typeof setInterval>
+
+const updateStorageValues = () => {
+  liveStorageValues.value.none = localStorage.getItem('counter-rate-limit:none-counters') || 'null'
+  liveStorageValues.value.debounced =
+    localStorage.getItem('counter-rate-limit:debounced-counters') || 'null'
+  liveStorageValues.value.throttled =
+    localStorage.getItem('counter-rate-limit:throttled-counters') || 'null'
+  liveStorageValues.value.mixed =
+    localStorage.getItem('counter-rate-limit:mixed-count') +
+      ' | ' +
+      localStorage.getItem('counter-rate-limit:mixed-extcount') || 'null'
+}
+
+onMounted(() => {
+  updateStorageValues()
+  pollInterval = setInterval(updateStorageValues, 200)
+})
+
+onUnmounted(() => {
+  if (pollInterval) {
+    clearInterval(pollInterval)
+  }
+})
 
 const reloadPage = () => {
   window.location.reload()
@@ -57,7 +93,7 @@ const reloadPage = () => {
     </tfoot>
   </table>
 
-  <h2>Advanced</h2>
+  <h2>Advanced - adapters</h2>
 
   <table>
     <thead>
@@ -76,7 +112,7 @@ const reloadPage = () => {
           <button @click="counterStoreAdvanced.incrementS(1)">+</button>
         </td>
         <td>{{ counterStoreAdvanced.countS }}&nbsp;&nbsp;{{ counterStoreAdvanced.extCountS }}</td>
-        <td>Values persist during session but reset after browser restart. Debounce: 50ms</td>
+        <td>Values persist during session but reset after browser restart.</td>
       </tr>
       <tr>
         <td>localStorage</td>
@@ -85,7 +121,7 @@ const reloadPage = () => {
           <button @click="counterStoreAdvanced.incrementL(1)">+</button>
         </td>
         <td>{{ counterStoreAdvanced.countL }}&nbsp;&nbsp;{{ counterStoreAdvanced.extCountL }}</td>
-        <td>Values persist across sessions and browser restarts. Debounce: 200ms</td>
+        <td>Values persist across sessions and browser restarts.</td>
       </tr>
       <tr>
         <td>cookies</td>
@@ -94,7 +130,7 @@ const reloadPage = () => {
           <button @click="counterStoreAdvanced.incrementC(1)">+</button>
         </td>
         <td>{{ counterStoreAdvanced.countC }}&nbsp;&nbsp;{{ counterStoreAdvanced.extCountC }}</td>
-        <td>Values stored in cookies with 30s expiry. Check browser dev tools. Debounce: 300ms</td>
+        <td>Values stored in cookies with 30s expiry. Check browser dev tools.</td>
       </tr>
       <tr>
         <td>indexedDB</td>
@@ -103,12 +139,97 @@ const reloadPage = () => {
           <button @click="counterStoreAdvanced.incrementI(1)">+</button>
         </td>
         <td>{{ counterStoreAdvanced.countI }}&nbsp;&nbsp;{{ counterStoreAdvanced.extCountI }}</td>
-        <td>Values stored in IndexedDB for complex data and large storage. Debounce: 150ms</td>
+        <td>Values stored in IndexedDB for complex data and large storage.</td>
       </tr>
     </tbody>
     <tfoot>
       <tr>
         <td colspan="4" style="text-align: right">
+          <button @click="reloadPage">🔄 Reload Page</button>
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <h2>Advanced - rate limiting</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Rate Limiting</th>
+        <th>Action</th>
+        <th>Store Value</th>
+        <th>localStorage Value</th>
+        <th>Expected behavior</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>None</td>
+        <td>
+          <button @click="counterStoreRateLimit.incrementNone(-1)">-</button>
+          <button @click="counterStoreRateLimit.incrementNone(1)">+</button>
+        </td>
+        <td>
+          {{ counterStoreRateLimit.countNone }}&nbsp;&nbsp;{{ counterStoreRateLimit.extCountNone }}
+        </td>
+        <td>
+          <code class="storage-value">{{ liveStorageValues.none }}</code>
+        </td>
+        <td>Every click saves immediately to localStorage</td>
+      </tr>
+      <tr>
+        <td>Debounced (1s)</td>
+        <td>
+          <button @click="counterStoreRateLimit.incrementDebounced(-1)">-</button>
+          <button @click="counterStoreRateLimit.incrementDebounced(1)">+</button>
+        </td>
+        <td>
+          {{ counterStoreRateLimit.countDebounced }}&nbsp;&nbsp;{{
+            counterStoreRateLimit.extCountDebounced
+          }}
+        </td>
+        <td>
+          <code class="storage-value">{{ liveStorageValues.debounced }}</code>
+        </td>
+        <td>Saves only after 1 second of inactivity</td>
+      </tr>
+      <tr>
+        <td>Throttled (1s)</td>
+        <td>
+          <button @click="counterStoreRateLimit.incrementThrottled(-1)">-</button>
+          <button @click="counterStoreRateLimit.incrementThrottled(1)">+</button>
+        </td>
+        <td>
+          {{ counterStoreRateLimit.countThrottled }}&nbsp;&nbsp;{{
+            counterStoreRateLimit.extCountThrottled
+          }}
+        </td>
+        <td>
+          <code class="storage-value">{{ liveStorageValues.throttled }}</code>
+        </td>
+        <td>Saves at most once per second</td>
+      </tr>
+      <tr>
+        <td>Mixed (1.5s)</td>
+        <td>
+          <button @click="counterStoreRateLimit.incrementMixed(-1)">-</button>
+          <button @click="counterStoreRateLimit.incrementMixed(1)">+</button>
+        </td>
+        <td>
+          {{ counterStoreRateLimit.countMixed }}&nbsp;&nbsp;{{
+            counterStoreRateLimit.extCountMixed
+          }}
+        </td>
+        <td>
+          <code class="storage-value">{{ liveStorageValues.mixed }}</code>
+        </td>
+        <td>Uses debounce for count, throttle for extCount</td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="5" style="text-align: right">
           <button @click="reloadPage">🔄 Reload Page</button>
         </td>
       </tr>
@@ -178,5 +299,10 @@ td {
   padding: 8px;
   word-wrap: break-word;
   overflow-wrap: break-word;
+}
+
+/* Storage value display */
+.storage-value {
+  font-style: italic;
 }
 </style>
