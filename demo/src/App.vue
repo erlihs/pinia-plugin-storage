@@ -21,15 +21,16 @@ const liveStorageValues = ref({
 let pollInterval: ReturnType<typeof setInterval>
 
 const updateStorageValues = () => {
-  liveStorageValues.value.none = localStorage.getItem('counter-rate-limit:none-counters') || 'null'
+  liveStorageValues.value.none =
+    localStorage.getItem('my-app:v1.0:counter-rate-limit:none-counters') || 'null'
   liveStorageValues.value.debounced =
-    localStorage.getItem('counter-rate-limit:debounced-counters') || 'null'
+    localStorage.getItem('my-app:v1.0:counter-rate-limit:debounced-counters') || 'null'
   liveStorageValues.value.throttled =
-    localStorage.getItem('counter-rate-limit:throttled-counters') || 'null'
+    localStorage.getItem('my-app:v1.0:counter-rate-limit:throttled-counters') || 'null'
   liveStorageValues.value.mixed =
-    localStorage.getItem('counter-rate-limit:mixed-count') +
+    localStorage.getItem('my-app:v1.0:counter-rate-limit:mixed-count') +
       ' | ' +
-      localStorage.getItem('counter-rate-limit:mixed-extcount') || 'null'
+      localStorage.getItem('my-app:v1.0:counter-rate-limit:mixed-extcount') || 'null'
 }
 
 onMounted(() => {
