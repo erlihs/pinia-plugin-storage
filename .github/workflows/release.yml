@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -67,14 +71,14 @@ jobs:
       run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
     - name: Create GitHub Release
-      uses: actions/create-release@v1
+      run: |
+        gh release create ${{ steps.get_version.outputs.VERSION }} \
+          --title "Release ${{ steps.get_version.outputs.VERSION }}" \
+          --notes "Changes in this Release
+        - See [CHANGELOG.md](CHANGELOG.md) for details
+        
+        ## What's Changed
+        
+        This release includes throttle support and global configuration options for enhanced performance control and developer experience."
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.get_version.outputs.VERSION }}
-        release_name: Release ${{ steps.get_version.outputs.VERSION }}
-        body: |
-          Changes in this Release
-          - See [CHANGELOG.md](CHANGELOG.md) for details
-        draft: false
-        prerelease: false
+        GH_TOKEN: ${{ github.token }}
