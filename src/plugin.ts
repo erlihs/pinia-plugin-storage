@@ -4,7 +4,7 @@
 
 import type { PiniaPluginContext } from 'pinia'
 import type { Bucket } from './types'
-import { isServerEnvironment, debounce } from './utils'
+import { isServerEnvironment, debounce, throttle } from './utils'
 import {
   resolveBuckets,
   resolveStorage,
@@ -105,43 +105,38 @@ export const createPiniaPluginStorage = ({ options, store }: PiniaPluginContext)
   void performHydrationAsync()
 
   // Set up persistence logic synchronously
-  const debounceDelayMs =
+  const globalDebounceDelayMs =
     typeof options.storage === 'object' && 'debounceDelayMs' in options.storage
-      ? options.storage.debounceDelayMs || 0
+      ? (options.storage.debounceDelayMs ?? 0)
       : 0
 
-  // Create a map to hold debounced persistence functions for each bucket plan
-  const debouncedPersistors = new Map<BucketPlan, () => void>()
+  const globalThrottleDelayMs =
+    typeof options.storage === 'object' && 'throttleDelayMs' in options.storage
+      ? (options.storage.throttleDelayMs ?? 0)
+      : 0
+
+  // Create a map to hold persistence functions for each bucket plan
+  const persistors = new Map<BucketPlan, () => void>()
 
   for (const plan of bucketPlans) {
-    const getAdapterDefaultDelay = (adapter: string): number => {
-      switch (adapter) {
-        case 'cookies':
-        case 'sessionStorage':
-          return 0
-        case 'localStorage':
-          return 100
-        case 'indexedDB':
-          return 250
-        default:
-          return 0
-      }
+    const persistFn = () => {
+      void persistPlan(plan, store, bucketLastStates, onError, globalNamespace, globalVersion)
     }
 
-    const delay =
-      plan.bucket.debounceDelayMs ?? debounceDelayMs ?? getAdapterDefaultDelay(plan.bucket.adapter)
+    // Determine delays for this bucket (bucket-level overrides global)
+    const bucketDebounceDelay = plan.bucket.debounceDelayMs ?? globalDebounceDelayMs
+    const bucketThrottleDelay = plan.bucket.throttleDelayMs ?? globalThrottleDelayMs
 
-    if (delay > 0) {
-      debouncedPersistors.set(
-        plan,
-        debounce(() => {
-          void persistPlan(plan, store, bucketLastStates, onError, globalNamespace, globalVersion)
-        }, delay),
-      )
+    // Priority: throttle > debounce > immediate
+    if (bucketThrottleDelay > 0) {
+      // Use throttling
+      persistors.set(plan, throttle(persistFn, bucketThrottleDelay))
+    } else if (bucketDebounceDelay > 0) {
+      // Use debouncing
+      persistors.set(plan, debounce(persistFn, bucketDebounceDelay))
     } else {
-      debouncedPersistors.set(plan, () => {
-        void persistPlan(plan, store, bucketLastStates, onError, globalNamespace, globalVersion)
-      })
+      // Immediate persistence
+      persistors.set(plan, persistFn)
     }
   }
 
@@ -155,7 +150,7 @@ export const createPiniaPluginStorage = ({ options, store }: PiniaPluginContext)
       return
     }
     bucketPlans.forEach((plan) => {
-      debouncedPersistors.get(plan)?.()
+      persistors.get(plan)?.()
     })
   })
 

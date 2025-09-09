@@ -49,11 +49,19 @@ type BaseBucket = ExclusiveIncludeExclude & {
    * Return value (if object) replaces the slice; otherwise in-place mutation is honored.
    */
   beforeHydrate?: (slice: unknown, store: Store) => unknown | void
-  /** Debounce delay in milliseconds for persistence operations */
+  /**
+   * Debounce delay in milliseconds for persistence operations.
+   * When set, waits for pause in activity before persisting.
+   * @default 0 (immediate persistence)
+   */
   debounceDelayMs?: number
-}
-
-/**
+  /**
+   * Throttle delay in milliseconds for persistence operations.
+   * When set, persists at regular intervals regardless of activity.
+   * @default 0 (no throttling)
+   */
+  throttleDelayMs?: number
+} /**
  * Storage bucket configuration with adapter-specific options
  */
 export type Bucket =
@@ -83,13 +91,21 @@ export type StorageOptions =
       version?: string
       /** Array of storage buckets with different configurations */
       buckets: Bucket[] | Bucket
-      /** Global debounce delay in milliseconds */
+      /**
+       * Global debounce delay in milliseconds.
+       * When set, waits for pause in activity before persisting.
+       * @default 0 (immediate persistence)
+       */
       debounceDelayMs?: number
+      /**
+       * Global throttle delay in milliseconds.
+       * When set, persists at regular intervals regardless of activity.
+       * @default 0 (no throttling)
+       */
+      throttleDelayMs?: number
       /** Error handler for storage operations */
       onError?: (error: unknown, ctx: ErrorContext) => void
-    }
-
-// Module augmentation for Pinia store options
+    } // Module augmentation for Pinia store options
 declare module 'pinia' {
   /* eslint-disable @typescript-eslint/no-unused-vars */
   export interface DefineStoreOptionsBase<S, Store> {

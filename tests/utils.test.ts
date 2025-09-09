@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { debounce, isServerEnvironment } from '../src/utils'
+import { debounce, throttle, isServerEnvironment } from '../src/utils'
 
 describe('Utilities', () => {
   beforeEach(() => {
@@ -128,6 +128,114 @@ describe('Utilities', () => {
       }).toThrow('Test error')
 
       expect(errorFn).toHaveBeenCalled()
+    })
+  })
+
+  describe('throttle', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('executes function immediately on first call', () => {
+      const fn = vi.fn()
+      const throttledFn = throttle(fn, 100)
+
+      throttledFn()
+      expect(fn).toHaveBeenCalledTimes(1)
+    })
+
+    it('ignores subsequent calls within throttle period', () => {
+      const fn = vi.fn()
+      const throttledFn = throttle(fn, 100)
+
+      throttledFn()
+      throttledFn()
+      throttledFn()
+
+      expect(fn).toHaveBeenCalledTimes(1)
+    })
+
+    it('executes again after throttle period expires', () => {
+      const fn = vi.fn()
+      const throttledFn = throttle(fn, 100)
+
+      throttledFn()
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      vi.advanceTimersByTime(100)
+      throttledFn()
+      expect(fn).toHaveBeenCalledTimes(2)
+    })
+
+    it('schedules final execution if called during throttle period', () => {
+      const fn = vi.fn()
+      const throttledFn = throttle(fn, 100)
+
+      throttledFn()
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      // Call again during throttle period
+      vi.advanceTimersByTime(50)
+      throttledFn()
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      // Should execute the scheduled call
+      vi.advanceTimersByTime(50)
+      expect(fn).toHaveBeenCalledTimes(2)
+    })
+
+    it('passes arguments to the throttled function', () => {
+      const fn = vi.fn()
+      const throttledFn = throttle(fn, 100)
+
+      throttledFn('arg1', 'arg2', 42)
+      expect(fn).toHaveBeenCalledWith('arg1', 'arg2', 42)
+    })
+
+    it('handles zero delay', () => {
+      const fn = vi.fn()
+      const throttledFn = throttle(fn, 0)
+
+      throttledFn()
+      throttledFn()
+      throttledFn()
+
+      expect(fn).toHaveBeenCalledTimes(3)
+    })
+
+    it('handles rapid calls correctly', () => {
+      const fn = vi.fn()
+      const throttledFn = throttle(fn, 100)
+
+      // Simulate 60fps updates (16.67ms intervals)
+      throttledFn() // Should execute immediately
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      // Advance time by small increments, calling each time
+      for (let i = 0; i < 5; i++) {
+        vi.advanceTimersByTime(16)
+        throttledFn() // Should be throttled, but final call will be scheduled
+      }
+      // Only the initial call should have executed at this point
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      // After the remaining throttle period, the final call should execute
+      vi.advanceTimersByTime(20) // Total 100ms passed since first call
+      expect(fn).toHaveBeenCalledTimes(2)
+    })
+
+    it('handles async functions', async () => {
+      const asyncFn = vi.fn().mockResolvedValue('result')
+      const throttledFn = throttle(asyncFn, 100)
+
+      throttledFn()
+      expect(asyncFn).toHaveBeenCalledTimes(1)
+
+      await vi.runAllTimersAsync()
     })
   })
 

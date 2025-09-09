@@ -1,6 +1,6 @@
 ![pinia-plugin-storage](./pinia-plugin-storage.png)
 
-# @erlihs/pinia-plugin-storage
+# pinia-plugin-storage
 
 🍍 A comprehensive state persistence and synchronization, yet as simple as it can be
 
@@ -16,7 +16,7 @@ Main Features:
 
 - **Real-time Synchronization**: Syncs state changes across browser tabs/windows
 
-- **Debounced Persistence**: Configurable debouncing to optimize write performance
+- **Debounced & Throttled Persistence**: Configurable debouncing and throttling to optimize write performance
 
 - **Namespace & Versioning**: Prevents storage key collisions and supports data migration
 
