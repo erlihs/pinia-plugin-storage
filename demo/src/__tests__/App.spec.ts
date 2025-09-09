@@ -58,6 +58,9 @@ describe('App.vue', () => {
     // Reset all mocks
     vi.clearAllMocks()
 
+    // Use fake timers to prevent actual timeouts from running
+    vi.useFakeTimers()
+
     // Create fresh Pinia instance with the storage plugin
     pinia = createPinia()
     pinia.use(createPiniaPluginStorage)
@@ -68,6 +71,8 @@ describe('App.vue', () => {
     vi.clearAllMocks()
     // Clear any running timers to prevent leaks
     vi.clearAllTimers()
+    // Restore real timers
+    vi.useRealTimers()
   })
 
   describe('Component Rendering', () => {
@@ -79,6 +84,7 @@ describe('App.vue', () => {
       })
 
       expect(wrapper.find('h1').text()).toBe('Pinia Plugin Storage')
+      wrapper.unmount()
     })
 
     it('renders basic storage section', () => {
@@ -99,6 +105,7 @@ describe('App.vue', () => {
       expect(tableHeaders[1].text()).toBe('Action')
       expect(tableHeaders[2].text()).toBe('Value')
       expect(tableHeaders[3].text()).toBe('Expected behavior')
+      wrapper.unmount()
     })
 
     it('renders advanced storage sections', () => {
@@ -113,6 +120,7 @@ describe('App.vue', () => {
       expect(h2Elements[0].text()).toBe('Basic')
       expect(h2Elements[1].text()).toBe('Advanced - adapters')
       expect(h2Elements[2].text()).toBe('Advanced - rate limiting')
+      wrapper.unmount()
     })
 
     it('renders cross-tab broadcasting information', () => {
@@ -129,6 +137,7 @@ describe('App.vue', () => {
       expect(description.text()).toContain(
         'Cross-tab broadcasting enables real-time synchronization',
       )
+      wrapper.unmount()
     })
 
     it('renders reload buttons', () => {
@@ -142,6 +151,7 @@ describe('App.vue', () => {
         .findAll('button')
         .filter((button) => button.text().includes('🔄 Reload Page'))
       expect(reloadButtons).toHaveLength(3) // Now we have 3 tables with reload buttons
+      wrapper.unmount()
     })
   })
 
@@ -163,10 +173,11 @@ describe('App.vue', () => {
       const noneStore = useCounterStoreNone()
       expect(noneStore.count).toBe(0)
       expect(noneStore.extCount.hex).toBe('0x0')
+      wrapper.unmount()
     })
 
     it('integrates with counter stores correctly', () => {
-      mount(App, {
+      const wrapper = mount(App, {
         global: {
           plugins: [pinia],
         },
@@ -188,6 +199,7 @@ describe('App.vue', () => {
       expect(rateLimitStore.countDebounced).toBe(0)
       expect(rateLimitStore.countThrottled).toBe(0)
       expect(rateLimitStore.countMixed).toBe(0)
+      wrapper.unmount()
     })
   })
 
@@ -214,6 +226,7 @@ describe('App.vue', () => {
       // Click decrement button
       await buttons[0].trigger('click')
       expect(noneStore.count).toBe(0)
+      wrapper.unmount()
     })
 
     it('handles basic store increment/decrement buttons', async () => {
@@ -234,6 +247,7 @@ describe('App.vue', () => {
       expect(basicStore.count).toBe(1)
       expect(basicStore.extCount.decimal).toBe(1)
       expect(basicStore.extCount.hex).toBe('0x1')
+      wrapper.unmount()
     })
 
     it('handles advanced store buttons', async () => {
@@ -269,6 +283,7 @@ describe('App.vue', () => {
       const indexedButtons = rows[3].findAll('button')
       await indexedButtons[1].trigger('click')
       expect(advancedStore.countI).toBe(1)
+      wrapper.unmount()
     })
 
     it('handles rate limiting store buttons', async () => {
@@ -304,6 +319,7 @@ describe('App.vue', () => {
       const mixedButtons = rows[3].findAll('button')
       await mixedButtons[1].trigger('click')
       expect(rateLimitStore.countMixed).toBe(1)
+      wrapper.unmount()
     })
 
     it('handles page reload button', async () => {
@@ -319,12 +335,13 @@ describe('App.vue', () => {
 
       await reloadButtons[0].trigger('click')
       expect(window.location.reload).toHaveBeenCalled()
+      wrapper.unmount()
     })
   })
 
   describe('Storage Scenarios', () => {
     it('none store does not persist values', () => {
-      mount(App, {
+      const wrapper = mount(App, {
         global: {
           plugins: [pinia],
         },
@@ -336,10 +353,11 @@ describe('App.vue', () => {
       // None store should not trigger any storage calls
       expect(localStorageMock.setItem).not.toHaveBeenCalled()
       expect(sessionStorageMock.setItem).not.toHaveBeenCalled()
+      wrapper.unmount()
     })
 
     it('basic store is configured for localStorage', () => {
-      mount(App, {
+      const wrapper = mount(App, {
         global: {
           plugins: [pinia],
         },
@@ -353,10 +371,11 @@ describe('App.vue', () => {
       expect(basicStore.count).toBe(5)
       expect(basicStore.extCount.decimal).toBe(5)
       expect(basicStore.extCount.hex).toBe('0x5')
+      wrapper.unmount()
     })
 
     it('advanced store is configured with multiple storage adapters', () => {
-      mount(App, {
+      const wrapper = mount(App, {
         global: {
           plugins: [pinia],
         },
@@ -375,10 +394,11 @@ describe('App.vue', () => {
       expect(advancedStore.countL).toBe(2)
       expect(advancedStore.countC).toBe(3)
       expect(advancedStore.countI).toBe(4)
+      wrapper.unmount()
     })
 
     it('rate limiting store is configured correctly', () => {
-      mount(App, {
+      const wrapper = mount(App, {
         global: {
           plugins: [pinia],
         },
@@ -397,6 +417,7 @@ describe('App.vue', () => {
       expect(rateLimitStore.countDebounced).toBe(2)
       expect(rateLimitStore.countThrottled).toBe(3)
       expect(rateLimitStore.countMixed).toBe(4)
+      wrapper.unmount()
     })
 
     it('handles storage errors gracefully', () => {
@@ -407,7 +428,7 @@ describe('App.vue', () => {
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-      mount(App, {
+      const wrapper = mount(App, {
         global: {
           plugins: [pinia],
         },
@@ -419,6 +440,7 @@ describe('App.vue', () => {
       // Should handle error gracefully and continue functioning
       expect(basicStore.count).toBe(5)
       consoleSpy.mockRestore()
+      wrapper.unmount()
     })
   })
 
@@ -447,10 +469,11 @@ describe('App.vue', () => {
       const text = wrapper.text()
       expect(text).toContain('15')
       expect(text).toContain('0xf')
+      wrapper.unmount()
     })
 
     it('handles negative values correctly', () => {
-      mount(App, {
+      const wrapper = mount(App, {
         global: {
           plugins: [pinia],
         },
@@ -462,6 +485,7 @@ describe('App.vue', () => {
       expect(noneStore.count).toBe(-5)
       expect(noneStore.extCount.decimal).toBe(-5)
       expect(noneStore.extCount.hex).toBe('0x-5')
+      wrapper.unmount()
     })
   })
 
@@ -482,6 +506,7 @@ describe('App.vue', () => {
         expect(table.find('tbody')).toBeTruthy()
         expect(table.find('tfoot')).toBeTruthy()
       })
+      wrapper.unmount()
     })
 
     it('has descriptive expected behavior text', () => {
@@ -501,30 +526,28 @@ describe('App.vue', () => {
       expect(text).toContain('Every click saves immediately to localStorage')
       expect(text).toContain('Saves only after 1 second of inactivity')
       expect(text).toContain('Saves at most once per second')
+      wrapper.unmount()
     })
   })
 
   describe('Live Storage Monitoring', () => {
-    beforeEach(() => {
-      // Mock setInterval and clearInterval
-      vi.spyOn(global, 'setInterval')
-      vi.spyOn(global, 'clearInterval')
-    })
-
     it('sets up localStorage polling on mount', () => {
+      const setIntervalSpy = vi.spyOn(global, 'setInterval')
+
       const wrapper = mount(App, {
         global: {
           plugins: [pinia],
         },
       })
 
-      expect(setInterval).toHaveBeenCalledWith(expect.any(Function), 200)
+      expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 200)
 
-      // Clean up to prevent hanging timers
       wrapper.unmount()
     })
 
     it('cleans up polling on unmount', () => {
+      const clearIntervalSpy = vi.spyOn(global, 'clearInterval')
+
       const wrapper = mount(App, {
         global: {
           plugins: [pinia],
@@ -532,7 +555,7 @@ describe('App.vue', () => {
       })
 
       wrapper.unmount()
-      expect(clearInterval).toHaveBeenCalled()
+      expect(clearIntervalSpy).toHaveBeenCalled()
     })
 
     it('displays localStorage values in the UI', async () => {
@@ -559,7 +582,33 @@ describe('App.vue', () => {
       const codeElements = wrapper.findAll('code.storage-value')
       expect(codeElements.length).toBeGreaterThan(0)
 
-      // Clean up to prevent hanging timers
+      wrapper.unmount()
+    })
+
+    it('updates localStorage values when polling triggers', async () => {
+      // Mock localStorage values that change over time
+      let callCount = 0
+      localStorageMock.getItem.mockImplementation((key) => {
+        callCount++
+        const mockData = {
+          'counter-rate-limit:none-counters': `{"countNone":${callCount},"extCountNone":{"decimal":${callCount},"hex":"0x${callCount.toString(16)}"}}`,
+        }
+        return mockData[key as keyof typeof mockData] || null
+      })
+
+      const wrapper = mount(App, {
+        global: {
+          plugins: [pinia],
+        },
+      })
+
+      // Advance timers to trigger the polling
+      vi.advanceTimersByTime(200)
+      await wrapper.vm.$nextTick()
+
+      // Verify that localStorage.getItem was called during polling
+      expect(localStorageMock.getItem).toHaveBeenCalledWith('counter-rate-limit:none-counters')
+
       wrapper.unmount()
     })
   })

@@ -10,6 +10,96 @@ The plugin supports configuration at multiple levels:
 2. **Single Bucket**: One adapter with options  
 3. **Multiple Buckets**: Different adapters for different data
 4. **Global Settings**: Shared configuration across buckets
+5. **Plugin Factory**: Global defaults that apply to all stores
+
+## 🏭 Plugin Factory Configuration
+
+Configure global defaults when creating the plugin that apply to all stores:
+
+```typescript
+import { createPinia } from 'pinia'
+import { createPiniaPluginStorage } from 'pinia-plugin-storage'
+
+const pinia = createPinia()
+
+// All usage patterns now work:
+pinia.use(createPiniaPluginStorage)           // Without parentheses
+pinia.use(createPiniaPluginStorage())         // With empty parentheses
+pinia.use(createPiniaPluginStorage({          // With global config
+  namespace: 'my-app',
+  version: '1.0',
+  debounceDelayMs: 100,
+  throttleDelayMs: 0,
+  onError: (error, ctx) => {
+    console.error('Global storage error:', error, ctx)
+  }
+}))
+```
+
+### Global Configuration Options
+
+```typescript
+interface GlobalStorageOptions {
+  /** Global namespace for all storage keys (prevents app collisions) */
+  namespace?: string
+  
+  /** Schema version for data migration support */
+  version?: string
+  
+  /** Global debounce delay in milliseconds */
+  debounceDelayMs?: number
+  
+  /** Global throttle delay in milliseconds */
+  throttleDelayMs?: number
+  
+  /** Error handler for storage operations */
+  onError?: (error: unknown, ctx: ErrorContext) => void
+}
+```
+
+### Configuration Priority System
+
+Configuration follows this priority (highest to lowest):
+
+1. **Bucket-level configuration** (highest priority)
+2. **Store-level configuration** 
+3. **Global plugin configuration** (lowest priority)
+
+```typescript
+// Global plugin config
+pinia.use(createPiniaPluginStorage({
+  namespace: 'global-app',
+  debounceDelayMs: 500,
+  onError: (error, ctx) => console.error('Global error:', error)
+}))
+
+// Store-level config (overrides global namespace)
+export const useUserStore = defineStore('user', {
+  state: () => ({ name: '', email: '' }),
+  storage: {
+    namespace: 'user-specific',  // Overrides global namespace
+    buckets: {
+      adapter: 'localStorage',
+      debounceDelayMs: 100       // Overrides global debounce
+    }
+  }
+})
+```
+
+### Migration Guide
+
+**No breaking changes** - all existing code continues to work:
+
+```typescript
+// Before (still works)
+pinia.use(createPiniaPluginStorage)
+
+// Now you can also use:
+pinia.use(createPiniaPluginStorage())     // With parentheses
+pinia.use(createPiniaPluginStorage({      // With global config
+  namespace: 'my-app'
+}))
+```
 
 ## 🎯 Simple String Configuration
 
