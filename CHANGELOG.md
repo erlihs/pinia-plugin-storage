@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2025-09-09
+
+### Fixed
+- **GitHub Actions**: Fixed release workflow permissions and deprecated action usage
+  - Updated from deprecated `actions/create-release@v1` to GitHub CLI approach
+  - Added explicit `contents: write` and `packages: write` permissions
+  - Improved release notes formatting and structure
+  - Ensures reliable GitHub release creation in CI/CD pipeline
+
+### Technical
+- Enhanced CI/CD reliability for future releases
+- Better error handling in release automation
+
 ## [1.1.0] - 2025-09-09
 
 ### Added
@@ -55,6 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Developer Experience**: Full TypeScript support and comprehensive error handling
 - **SSR Compatible**: Safe for server-side rendering environments
 
-[Unreleased]: https://github.com/erlihs/pinia-plugin-storage/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/erlihs/pinia-plugin-storage/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/erlihs/pinia-plugin-storage/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/erlihs/pinia-plugin-storage/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/erlihs/pinia-plugin-storage/releases/tag/v1.0.0
